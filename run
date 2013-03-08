@@ -1,0 +1,5 @@
+#!/bin/sh
+
+THIS_DIR=$(readlink -f $(dirname $0))
+export PYTHONPATH="${THIS_DIR}/src":${PYTHONPATH}
+$*

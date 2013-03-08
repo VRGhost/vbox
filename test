@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cd $(dirname "$0")
+./run python -m unittest discover -v --start-directory="$(readlink -f .)/src" --failfast
