@@ -1,5 +1,30 @@
 """Base classes for logical virtualbox structure."""
 
+class ElementGroup(object):
+
+    _elements = None
+
+    def __init__(self):
+        super(ElementGroup, self).__init__()
+        self._elements = self.getElements()
+        for (name, value) in self._elements.iteritems():
+            setattr(self, name, value)
+
+    def getElements(self):
+        raise NotImplementedError
+        return {}
+
+    def getInvalidObjects(self):
+        for typ in self._elements.itervalues():
+            for el in typ.getInvalidObjects():
+                yield el
+
+    def find(self, uuid):
+        for typ in self._elements.itervalues():
+            obj = typ.find(uuid)
+            if obj is not None:
+                return obj
+
 class VirtualBoxElement(object):
     
     def __init__(self, vb):
@@ -43,12 +68,14 @@ class VirtualBoxEntityType(VirtualBoxElement):
         return rv
 
     def find(self, uuid):
+        # Refresh list
+        self.list()
         return self._objIdx.get(uuid)
 
     def getInvalidObjects(self):
         return iter(self._unknownObjects)
 
-    def onDestroy(self, object):
+    def onChange(self, object):
         self._listUpToDate = False
 
 
@@ -95,7 +122,10 @@ class VirtualBoxEntity(VirtualBoxElement):
         raise NotImplementedError
 
     def destroy(self):
-        self.parent.onDestroy(self)
+        self.onChange()
+
+    def onChange(self):
+        self.parent.onChange(self)
 
     def getId(self):
         for name in self.idProps:

@@ -5,14 +5,9 @@ import subprocess
 class CmdError(subprocess.CalledProcessError):
     """Base class for command-line exceptions."""
 
-    def __init__(self, rc, cmd, output):
-        self.rc = rc
-        self.cmd = tuple(cmd)
-        self.out = output
-
     def __str__(self):
         return "{!r} failed with rc={} and output:\n=====\n{}\n========".format(
-            self.rc, self.cmd, self.out)
+            self.returncode, self.cmd, self.output)
 
 class Base(object):
     
@@ -36,8 +31,11 @@ class Base(object):
     def onError(self, rc, cmd, out):
         raise self.errClass(rc, cmd, stdout)
 
+    def call(self, tail):
+        return self.parent.call(self.getCmd(tail))
+
     def checkOutput(self, tail):
-        (rc, cmd, out) = self.parent.call(self.getCmd(tail))
+        (rc, cmd, out) = self.call(tail)
         handler = self.getRcHandlers().get(rc)
         if handler:
             return handler(cmd, out)

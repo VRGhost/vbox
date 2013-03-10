@@ -1,4 +1,11 @@
 #!/bin/sh
 
 cd $(dirname "$0")
-./run python -m unittest discover -v --start-directory="$(readlink -f .)/src" --failfast
+
+START_DIR="$(readlink -f .)/src"
+
+if [ "$(uname -o)" == "Cygwin" ]; then
+    START_DIR=$(cygpath -w "${START_DIR}")
+fi
+
+./run python -m unittest discover -v --start-directory="${START_DIR}" --failfast $*

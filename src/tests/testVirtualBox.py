@@ -1,6 +1,8 @@
 import os
-
+import time
 import unittest
+
+FD_IMG=os.path.realpath(os.path.join(os.path.dirname(__file__), "fd.img"))
 
 class TestVirtualBox(unittest.TestCase):
 
@@ -60,5 +62,47 @@ class TestVirtualBox(unittest.TestCase):
         vm = self.vb.vms.create(register=True)
         hdd = self.vb.hdd.create(size=42)
         vm.ide.attach(hdd)
-        print(vm.ide.findSlotOf(hdd))
+        (device, port) = vm.ide.findSlotOf(hdd)
+        hdd2 = vm.ide.getMedia(device, port)
+        self.assertEqual(hdd, hdd2)
         vm.destroy()
+
+    def testEmptyDvdAttach(self):
+        vm = self.vb.vms.create(register=True)
+        img = self.vb.mediums.dvd.empty
+        vm.ide.attach(img)
+        (device, port) = vm.ide.findSlotOf(img)
+        img2 = vm.ide.getMedia(device, port)
+        self.assertEqual(img, img2)
+        vm.destroy()
+
+    def testEmptyFloppyAttach(self):
+        vm = self.vb.vms.create(register=True)
+        img = self.vb.mediums.floppy.empty
+        vm.floppy.attach(img)
+        (device, port) = vm.floppy.findSlotOf(img)
+        img2 = vm.floppy.getMedia(device, port)
+        self.assertEqual(img, img2)
+        vm.destroy()
+
+    def testFdBoot(self):
+        vm = self.vb.vms.create(register=True)
+        img = self.vb.mediums.floppy.get(FD_IMG)
+        vm.floppy.attach(img)
+        self.assertFalse(vm.running)
+        vm.start()
+        self.assertTrue(vm.running)
+        vm.wait(timeout=2)
+        # this FD image simply stays turned on.
+        self.assertTrue(vm.running)
+        vm.pause()
+        self.assertFalse(vm.running)
+        self.assertTrue(vm.paused)
+        vm.resume()
+        self.assertTrue(vm.running)
+        # Reset
+        vm.reset()
+        self.assertTrue(vm.running)
+        vm.powerOff()
+        self.assertFalse(vm.running)
+        #vm.destroy()

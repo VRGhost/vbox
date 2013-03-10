@@ -1,9 +1,11 @@
 import os
+import threading
 
 from . import (
     base,
     cli, 
     hdd,
+    mediums,
     vm,
     )
 
@@ -15,7 +17,7 @@ class _HDD(base.VirtualBoxEntityType):
     def create(self, size, filename=None, format="VDI", variant="Standard"):
         super(_HDD, self).create()
         if not filename:
-            lst = self.list()
+            lst = tuple(self.list())
             idx = 0
             genName = lambda : "auto_created_hdd_{}.{}".format(idx, format.lower())
             while (genName() in lst) or os.path.exists(genName()):
@@ -26,7 +28,7 @@ class _HDD(base.VirtualBoxEntityType):
         return self.get(filename)
 
     def listRegisteredIds(self):
-        return []
+        return [el["UUID"] for el in self.vb.cli.manage.list.hdds()]
 
 class _VMs(base.VirtualBoxEntityType):
     
@@ -47,6 +49,7 @@ class _VMs(base.VirtualBoxEntityType):
 
         kwargs["name"] = name
         out = self.vb.cli.manage.createvm(**kwargs)
+        out = cli.util.parseParams(out)
         return self.get(out["Settings file"])
 
     def listRegisteredIds(self):
@@ -62,31 +65,26 @@ class _VbInfo(base.VirtualBoxEntityType):
     def host(self):
         return self.vb.cli.manage.list.hostinfo()
 
-class VirtualBox(object):
+class VirtualBox(base.ElementGroup):
     """Python version of virtualbox program/service."""
 
     list = property(lambda s: s.cli.manage.list)
 
     class cli(object):
+        _Lock = None
+        headless = None
         manage = None
 
     def __init__(self):
-        self.cli.manage = cli.VBoxManage()
+        super(VirtualBox, self).__init__()
+        self.cli._Lock = threading.RLock()
+        self.cli.manage = cli.VBoxManage(self)
+        self.cli.headless = cli.VBoxHeadless(self)
         self.info = _VbInfo(self)
-        self._elements = {
+
+    def getElements(self):
+        return {
             "hdd": _HDD(self),
             "vms": _VMs(self),
+            "mediums": mediums.HostMediums(self)
         }
-        for (name, obj) in self._elements.iteritems():
-            setattr(self, name, obj)
-
-    def getInvalidObjects(self):
-        for typ in self._elements.itervalues():
-            for el in typ.getInvalidObjects():
-                yield el
-
-    def find(self, uuid):
-        for typ in self._elements.itervalues():
-            obj = typ.find(uuid)
-            if obj is not None:
-                return obj

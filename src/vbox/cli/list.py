@@ -17,7 +17,8 @@ class List(subCmd.Base):
     _all = None
     def all(self):
         if not self._all:
-            outp = self.checkOutput([], rc=1)
+            (rc, cmd, outp) = self.call([])
+            assert rc == 1, cmd
             outp = "".join(line.strip() for line in outp.splitlines())
             match = re.search(r"(\w+(?:\|\w+)+)", outp)
             self._all = tuple(match.group(1).split('|'))
