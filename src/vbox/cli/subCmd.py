@@ -2,10 +2,23 @@
 
 import subprocess
 
+class CmdError(subprocess.CalledProcessError):
+    """Base class for command-line exceptions."""
+
+    def __init__(self, rc, cmd, output):
+        self.rc = rc
+        self.cmd = tuple(cmd)
+        self.out = output
+
+    def __str__(self):
+        return "{!r} failed with rc={} and output:\n=====\n{}\n========".format(
+            self.rc, self.cmd, self.out)
+
 class Base(object):
     
     # Name that this subcommand maps to
     cmd = None
+    errClass = CmdError
 
     def __init__(self, parent):
         self.parent = parent
@@ -15,30 +28,23 @@ class Base(object):
     def getRcHandlers(self):
         return {}
 
-    def checkOutput(self, tail, rc=0):
+    def getCmd(self, tail):
         cmd = [self.cmd]
         cmd.extend(tail)
+        return cmd
 
-        strCmd = []
-        for el in cmd:
-            if not isinstance(el, basestring):
-                el = str(el)
-            strCmd.append(el)
+    def onError(self, rc, cmd, out):
+        raise self.errClass(rc, cmd, stdout)
 
-        handlers = self.getRcHandlers()
-        try:
-            out = self.parent.checkOutput(strCmd, rc)
-        except subprocess.CalledProcessError as err:
-            out = err.output
-            myHandler = handlers.get(err.returncode)
-            if not myHandler:
-                raise
+    def checkOutput(self, tail):
+        (rc, cmd, out) = self.parent.call(self.getCmd(tail))
+        handler = self.getRcHandlers().get(rc)
+        if handler:
+            return handler(cmd, out)
+        elif rc != 0:
+            return self.onError(rc, cmd, out)
         else:
-            myHandler = handlers.get(rc)
-
-        if myHandler:
-            out = myHandler(out)
-        return out
+            return out
 
 
 class Generic(Base):
@@ -56,6 +62,8 @@ class Generic(Base):
         handlers = self.getRcHandlers()
 
         for (name, value) in kwargs.iteritems():
+            if value is None:
+                continue
             if name in long:
                 if name in bools:
                     if value:

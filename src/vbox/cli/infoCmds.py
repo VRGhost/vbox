@@ -9,7 +9,7 @@ class ShowHdInfo(subCmd.PlainCall):
 
     def getRcHandlers(self):
         return {
-            1: lambda txt: None
+            1: lambda cmd, txt: None
         }
 
 
@@ -17,7 +17,7 @@ class ShowVmInfo(subCmd.PlainCall):
 
     def getRcHandlers(self):
         return {
-            1: lambda txt: None
+            1: lambda cmd, txt: None
         }
 
     def __call__(self, id):

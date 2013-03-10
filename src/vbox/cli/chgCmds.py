@@ -1,8 +1,9 @@
 """Commands that alter virtualbox states."""
 
-from .subCmd import Generic, PlainCall, VmPropSetter
+from .subCmd import Generic, PlainCall, VmPropSetter, CmdError
 
 from . import util
+
 
 class CreateHD(Generic):
 
@@ -14,27 +15,19 @@ class CreateHD(Generic):
             0: self._findErrors,
         }
 
-    def _findErrors(self, output):
+    def _findErrors(self, cmd, output):
         txt = output.lower()
         if ("error:" in txt) or ("verr_" in txt):
-            raise Exception("Failed to create HDD:\n====\n{}\n====\n".format(output))
+            raise CreateError(cmd, output)
         elif not txt:
             raise Exception("Expected for `createhd` to write something to the output.")
-        return True
+        return output
 
 class CreateVM(Generic):
 
     longOpts = ("name", "groups", "ostype", "register", "basefolder", "uuid")
     mandatory = ("name", )
     boolOpts = ("register", )
-
-    def getRcHandlers(self):
-        return {
-            0: self._parse,
-        }
-
-    def _parse(self, txt):
-        return util.parseParams(txt)
 
 
 class UnregisterVM(PlainCall):
@@ -69,5 +62,30 @@ class StorageCtl(PlainCall):
 class StorageAttach(VmPropSetter):
 
     longOpts = ("storagectl", "port", "device", "type", "medium",)
-    mandatory = ("storagectl", )
+    mandatory = ("storagectl", "type")
 
+
+class StartVm(VmPropSetter):
+    """Start VM."""
+
+    longOpts = ("type", )
+
+class ControlVm(VmPropSetter):
+
+    def __call__(self, name, action):
+        return self.checkOutput([name, action])
+
+    def pause(self, name):
+        return self(name, "pause")
+
+    def resume(self, name):
+        return self(name, "resume")
+
+    def reset(self, name):
+        return self(name, "reset")
+
+    def poweroff(self, name):
+        return self(name, "poweroff")
+
+    def savestate(self, name):
+        return self(name, "savestate")

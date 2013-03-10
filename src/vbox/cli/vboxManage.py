@@ -1,20 +1,12 @@
-from distutils.spawn import find_executable
-import os
-import subprocess
 
-from . import chgCmds, infoCmds
+from . import chgCmds, infoCmds, base
 from .list import List
 
-
-class VBoxManage(object):
+class VBoxManage(base.Command):
     """Python representation of VboxManage executable."""
 
-    list = createhd = None
-
-    def __init__(self, executable="VBoxManage"):
-        self._executable = find_executable(executable)
-        if (not self._executable) or (not os.path.isfile(self._executable)):
-            raise Exception("Failed to locate virtualbox executable {!r}".format(executable))
+    def __init__(self, vb, executable="VBoxManage"):
+        super(VBoxManage, self).__init__(vb, executable)
 
         self.list = List(self)
         self.showhdinfo = infoCmds.ShowHdInfo(self)
@@ -26,13 +18,5 @@ class VBoxManage(object):
         self.storagectl = chgCmds.StorageCtl(self)
         self.storageattach = chgCmds.StorageAttach(self)
 
-    def checkOutput(self, tail, rc=0):
-        cmd = [self._executable]
-        cmd.extend(tail)
-        try:
-            return subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as err:
-            if err.returncode == rc:
-                return err.output
-            else:
-                raise
+        self.startvm = chgCmds.StartVm(self)
+        self.controlvm = chgCmds.ControlVm(self)

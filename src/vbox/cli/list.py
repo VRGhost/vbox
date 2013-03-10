@@ -11,7 +11,7 @@ class List(subCmd.Base):
     GroupOutputs = (
         "ostypes", "runningvms", "hostdvds",
         "hostfloppies", "bridgedifs", "hostonlyifs",
-        "dhcpservers",
+        "dhcpservers", "hdds", "dvds", "floppies", 
         )
 
     _all = None
