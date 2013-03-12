@@ -31,3 +31,4 @@ nosetests.xml
 
 
 *.vdi
+*.sublime-workspace

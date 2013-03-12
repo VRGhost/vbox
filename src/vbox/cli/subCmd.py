@@ -1,6 +1,7 @@
 """manage subcommand."""
 
 import subprocess
+from . import base
 
 class CmdError(subprocess.CalledProcessError):
     """Base class for command-line exceptions."""
@@ -9,30 +10,26 @@ class CmdError(subprocess.CalledProcessError):
         return "{!r} failed with rc={} and output:\n=====\n{}\n========".format(
             self.returncode, self.cmd, self.output)
 
-class Base(object):
+class Base(base.TrailingCmd):
     
     # Name that this subcommand maps to
-    cmd = None
     errClass = CmdError
 
     def __init__(self, parent):
-        self.parent = parent
-        if self.cmd == None:
-            self.cmd = self.__class__.__name__.lower()
+        super(Base, self).__init__(parent)
+        if self.head == None:
+            self.head = self.__class__.__name__.lower()
 
     def getRcHandlers(self):
         return {}
 
-    def getCmd(self, tail):
-        cmd = [self.cmd]
-        cmd.extend(tail)
-        return cmd
-
     def onError(self, rc, cmd, out):
-        raise self.errClass(rc, cmd, stdout)
+        raise self.errClass(cmd, rc, out)
 
     def call(self, tail):
-        return self.parent.call(self.getCmd(tail))
+        cmd = self.getCmd(tail)
+        self._callPreCmdExec(cmd)
+        return self.parent.call(cmd)
 
     def checkOutput(self, tail):
         (rc, cmd, out) = self.call(tail)
@@ -48,28 +45,39 @@ class Base(object):
 class Generic(Base):
     """Generic command-line callable interface."""
 
-    longOpts = ()
-    boolOpts = ()
+    opts = ()
+    flags = ()
+    bools = ()
     mandatory = ()
 
     def dictToCmdLine(self, kwargs):
         cmd = []
         expecting = list(self.mandatory)
-        long = self.longOpts
-        bools = self.boolOpts
-        handlers = self.getRcHandlers()
+        
+        long = self.opts
+        flags = self.flags
+        bools = self.bools
 
         for (name, value) in kwargs.iteritems():
             if value is None:
                 continue
+            cmdName = "--" + name
             if name in long:
-                if name in bools:
-                    if value:
-                        cmd.append("--" + name)
+                cmd.extend((cmdName, value))
+            elif name in flags:
+                if value:
+                    cmd.append(cmdName)
+            elif name in bools:
+                if isinstance(value, basestring) and \
+                    (value.lower() in ("on", "off")) \
+                :
+                    value = value.lower()
                 else:
-                    cmd.extend(("--" + name, value))
+                    value = "on" if value else "off"
+                cmd.extend((cmdName, value))
             else:
                 raise TypeError("Unexpected option {!r}.".format(name))
+
             try:
                 expecting.remove(name)
             except ValueError:
@@ -88,9 +96,21 @@ class PlainCall(Base):
     def __call__(self, *args):
         return self.checkOutput(args)
 
-class VmPropSetter(Generic):
+class VmCmd(Generic):
 
     def __call__(self, vmName, **kwargs):
         cmd = self.dictToCmdLine(kwargs)
         cmd.insert(0, vmName)
         return self.checkOutput(cmd)
+
+class VmPropSetter(Generic):
+
+    propName = None
+
+    def __call__(self, vmName, propName, **kwargs):
+        cmd = self.dictToCmdLine(kwargs)
+        prefix = [vmName, propName]
+        prop = self.propName
+        if prop:
+            prefix.insert(1, prop)
+        return self.checkOutput(prefix + cmd)

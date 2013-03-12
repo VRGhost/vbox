@@ -9,7 +9,7 @@ class List(subCmd.Base):
     PlainOutputs = (
         "systemproperties", "hostinfo")
     GroupOutputs = (
-        "ostypes", "runningvms", "hostdvds",
+        "runningvms", "hostdvds",
         "hostfloppies", "bridgedifs", "hostonlyifs",
         "dhcpservers", "hdds", "dvds", "floppies", 
         )
@@ -25,6 +25,16 @@ class List(subCmd.Base):
         return self._all
 
     vms = lambda s: s._vmList("vms")
+
+    def ostypes(self):
+        """Ostypes never change and can be permamently cached."""
+        try:
+            return self.__ostypeCache
+        except AttributeError:
+            rv = util.iterParamGroups(self.checkOutput(["ostypes"]))
+            rv = tuple(rv)
+            self.__ostypeCache = rv
+            return rv
 
     def _vmList(self, cmd):
         txt = self.checkOutput([cmd])

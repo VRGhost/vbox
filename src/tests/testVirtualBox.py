@@ -11,12 +11,12 @@ class TestVirtualBox(unittest.TestCase):
         self.vb = vbox.VirtualBox()
 
     def testListAll(self):
-        listAll = self.vb.list.all()
+        listAll = self.vb.cli.manage.list.all()
         self.assertIn("hdds", listAll)
         self.assertIn("dvds", listAll)
 
     def testListOsTypes(self):
-        listAll = self.vb.list.ostypes()
+        listAll = self.vb.cli.manage.list.ostypes()
         descs = [el["Description"] for el in listAll]
         self.assertIn("Windows 95", descs)
         self.assertIn("Ubuntu", descs)
@@ -27,8 +27,7 @@ class TestVirtualBox(unittest.TestCase):
         self.assertEqual(hdd.size, size)
         fname = hdd.fname
         hdd.destroy()
-        self.assertFalse(hdd.info)
-        self.assertFalse(hdd.size)
+        self.assertFalse(hdd.accessible)
         self.assertFalse(os.path.exists(fname))
 
     def testSystemInfo(self):
@@ -39,9 +38,25 @@ class TestVirtualBox(unittest.TestCase):
         self.assertTrue(self.vb.info.host)
 
     def testCreateVmRecord(self):
-        vm = self.vb.vms.create(register=True)
+        ostypes = self.vb.info.ostypes
+        for el in ostypes:
+            if ("other" in el["Description"].lower()) or \
+                ("unknown" in el["Description"].lower()):
+                continue
+
+            if el["Description"] != el["ID"]:
+                # Picking more ostype that is as cunning as possible
+                selected = el
+                break
+        else:
+            selected = ostypes[-1]
+
+        checkTypeDesc = selected["Description"]
+        checkTypeId = selected["ID"]
+        vm = self.vb.vms.create(register=True, ostype=checkTypeDesc)
         self.assertTrue(vm)
         self.assertIn(vm, self.vb.vms.list())
+        self.assertEqual(vm.ostype, checkTypeId)
         vm.destroy()
         self.assertNotIn(vm, self.vb.vms.list())
 
@@ -88,8 +103,9 @@ class TestVirtualBox(unittest.TestCase):
     def testFdBoot(self):
         vm = self.vb.vms.create(register=True)
         img = self.vb.mediums.floppy.get(FD_IMG)
-        vm.floppy.attach(img)
+        vm.floppy.attach(img, ensureBootable=True)
         self.assertFalse(vm.running)
+        oldTime = vm.changeTime
         vm.start()
         self.assertTrue(vm.running)
         vm.wait(timeout=2)
@@ -104,5 +120,17 @@ class TestVirtualBox(unittest.TestCase):
         vm.reset()
         self.assertTrue(vm.running)
         vm.powerOff()
+        self.assertGreater(vm.changeTime, oldTime)
         self.assertFalse(vm.running)
-        #vm.destroy()
+        vm.destroy()
+
+
+    def testChangeVmProps(self):
+        vm = self.vb.vms.create(register=True)
+        vm.memory = 512
+        self.assertEqual(vm.memory, 512)
+        vm.destroy()
+
+    def testNicAttach(self):
+        vm = self.vb.vms.create(register=True)
+        vm.destroy()

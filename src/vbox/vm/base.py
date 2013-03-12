@@ -1,46 +1,58 @@
 from .. import base
 
-VirtualBoxEntity = base.VirtualBoxEntity
-
-class Refreshable(object):
+class VMBase(base.VirtualBoxEntity):
     
-    refreshPending = True
+    vm = cli = None
 
-    def refresh(self):
-        del self.info
-        self.info
+    def _scheduleRefreshInfo(self):
+        super(VMBase, self)._scheduleRefreshInfo()
+        del self.vm.info
 
-class OnCallRefresher(object):
-
-    def __init__(self, parent, target):
-        self.parent = parent
-        self.target = target
-
-    def __getattr__(self, name):
-        obj = self.__class__(self.parent, getattr(self.target, name))
-        setattr(self, name, obj)
-        return obj
-
-    def __call__(self, *args, **kwargs):
-        rv = self.target(*args, **kwargs)
-        self.parent.refresh()
-        return rv
-
-class RefreshableEntity(VirtualBoxEntity, Refreshable):
+class VirtualMachinePart(VMBase):
     
-    class cli(object):
-        manage = None
+    vm = property(lambda s: s.parent.vm)
+    cli = property(lambda s: s.parent.cli)
+    idx = property(lambda s: s._initId)
 
-    def __init__(self, *args, **kwargs):
-        super(RefreshableEntity, self).__init__(*args, **kwargs)
-        self.cli.manage = OnCallRefresher(self, self.vb.cli.manage)
+    def onDestroyed(self):
+        """Function handler executed when VM had detected that given element is no longer present in the VM."""
 
-class VirtualMachinePart(RefreshableEntity):
-    
-    def __init__(self, vm, *args, **kwargs):
-        super(VirtualMachinePart, self).__init__(*args, **kwargs)
-        self.vm = vm
+    def iterIds(self):
+        # This will allow for virtual part to refresh its info cache whenever
+        # its parent vm executes CLI command
+        return self.vm.iterIds()
 
-    def refresh(self):
-        self.parent.refresh()
-        super(VirtualMachinePart, self).refresh()
+class PartGroup(VirtualMachinePart):
+    """An iterable part group."""
+
+    def _getInfo(self):
+        pInfo = self.parent.info
+        1/0
+
+    def __iter__(self):
+        return self.info.itervalues()
+
+
+    def find(self, name=None, type=None):
+        if name and type:
+            match = lambda cnt: (cnt.type == type) and (cnt.name == name)
+        elif name:
+            match = lambda cnt: cnt.name == name
+        elif type:
+            match = lambda cnt: cnt.type == type
+        else:
+            match = lambda cnt: True
+
+        for el in self:
+            if match(el):
+                return el
+
+    def get(self, *args, **kwargs):
+        it = self.find(*args, **kwargs)
+        return it.next()
+
+    def create(self, name, type):
+        assert not self.get(name=name)
+        self.cli.manage.storagectl(
+            self.vm.id, name, add=type)
+        return self.get(name=name, type=type)

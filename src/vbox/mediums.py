@@ -42,7 +42,7 @@ class MediaType(base.VirtualBoxEntityType):
 
     def __init__(self, *args, **kwargs):
         super(MediaType, self).__init__(*args, **kwargs)
-        self.empty = self.emptyCls(self, self.vb, None)
+        self.empty = self.emptyCls(self, None)
 
     def getFullList(self):
         raise NotImplementedError

@@ -1,13 +1,20 @@
 """Commands that alter virtualbox states."""
 
-from .subCmd import Generic, PlainCall, VmPropSetter, CmdError
+from .subCmd import (
+    CmdError,
+    Generic,
+    PlainCall,
+    VmCmd,
+    VmPropSetter,
+)
 
 from . import util
 
 
 class CreateHD(Generic):
 
-    longOpts = ("filename", "size", "format", "variant")
+    changesVmState = True
+    opts = ("filename", "size", "format", "variant")
     mandatory = ("filename", "size")
 
     def getRcHandlers(self):
@@ -18,60 +25,49 @@ class CreateHD(Generic):
     def _findErrors(self, cmd, output):
         txt = output.lower()
         if ("error:" in txt) or ("verr_" in txt):
-            raise CreateError(cmd, output)
+            raise CmdError(cmd, 0, output)
         elif not txt:
             raise Exception("Expected for `createhd` to write something to the output.")
         return output
 
 class CreateVM(Generic):
 
-    longOpts = ("name", "groups", "ostype", "register", "basefolder", "uuid")
+    changesVmState = True
+    opts = ("name", "groups", "ostype", "basefolder", "uuid")
+    flags = ("register", )
     mandatory = ("name", )
-    boolOpts = ("register", )
 
 
-class UnregisterVM(PlainCall):
+class UnregisterVM(VmCmd):
 
-    def __call__(self, name, delete=False):
-        cmd = [name]
-        if delete:
-            cmd.append("--delete")
-        return self.checkOutput(cmd)
+    changesVmState = True
+    flags = ("delete", )
 
+class StorageCtl(VmPropSetter):
 
-class StorageCtl(PlainCall):
-
-    
-    def __call__(self, vmName, name, add=None, controller=None, sataportcount=None, hostiocache=None, bootable=None, remove=None):
-        cmd = [vmName, "--name", name]
-        if add:
-            cmd.extend(("--add", add))
-        if controller:
-            cmd.extend(("--controller", controller))
-        if sataportcount:
-            cmd.extend(("--sataportcount", int(sataportcount)))
-        if hostiocache is not None:
-            cmd.extend(("--hostiocache", "on" if hostiocache else "off"))
-        if bootable is not None:
-            cmd.extend(("--bootable", "on" if bootable else "off"))
-        if remove:
-            cmd.append("--remove")
-        return self.checkOutput(cmd)
-
+    changesVmState = True
+    propName = "--name"
+    opts = ("add", "controller", "sataportcount")
+    bools = ("hostiocache", "bootable")
+    flags = ("remove")
 
 class StorageAttach(VmPropSetter):
 
-    longOpts = ("storagectl", "port", "device", "type", "medium",)
-    mandatory = ("storagectl", "type")
+    changesVmState = True
+    propName = "--storagectl"
+    opts = ("port", "device", "type", "medium",)
+    mandatory = ("type", )
 
 
-class StartVm(VmPropSetter):
+class StartVm(VmCmd):
     """Start VM."""
 
-    longOpts = ("type", )
+    changesVmState = True
+    opts = ("type", )
 
 class ControlVm(VmPropSetter):
 
+    changesVmState = True
     def __call__(self, name, action):
         return self.checkOutput([name, action])
 
@@ -89,3 +85,18 @@ class ControlVm(VmPropSetter):
 
     def savestate(self, name):
         return self(name, "savestate")
+
+class ModifyVm(PlainCall):
+    """ModifyVm bindings."""
+
+    changesVmState = True
+    # This function has vay too many parameters to
+    # bother declaring them here.
+    # Plus, it is the one that is most likely to change
+    # (Judging number of parameters again.) 
+    # 
+    # This is why it had been declared PlainCall and
+    # one has to pass parameters in array rather nice
+    # kwargs.
+    #
+    # No validation is performed.

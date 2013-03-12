@@ -1,4 +1,5 @@
 """VM storage controller."""
+from collections import OrderedDict, defaultdict
 
 from . import base
 
@@ -12,8 +13,7 @@ class StorageController(base.VirtualMachinePart):
     bootable = property(lambda s: s.getProp("bootable") == "on")
 
     def destroy(self):
-        self.vb.cli.manage.storagectl(self.vm.UUID, self.name, remove=True)
-        self.refresh()
+        self.vb.cli.manage.storagectl(self.vm.id, self.name, remove=True)
 
     @property
     def type(self):
@@ -29,14 +29,7 @@ class StorageController(base.VirtualMachinePart):
         else:
             raise Exception("Unknown hw type {!r}".format(hw))
 
-    def getProp(self, name, type=None):
-        print self.info
-        rv = self.vm.getProp("storagecontroller{}{}".format(name, self.idx))
-        if type:
-            rv = type(rv)
-        return rv
-
-    def attach(self, what, type=None, slot=None):
+    def attach(self, what, type=None, slot=None, ensureBootable=False):
         if isinstance(what, basestring):
             medium = what
         else:
@@ -44,18 +37,23 @@ class StorageController(base.VirtualMachinePart):
         if not type:
             type = what.getVmAttachType()
         if not slot:
-            slot = self.findEmptySlot()
+            if ensureBootable:
+                slot = self.findEmptySlot(ensureMaster=True)
+            else:
+                slot = self.findEmptySlot()
             if not slot:
                 raise Exception("No empty slots found.")
-        self.vb.cli.manage.storageattach(self.vm.UUID, storagectl=self.name,
+        self.vb.cli.manage.storageattach(self.vm.id, self.name,
             port=slot[0], device=slot[1], type=type,
             medium=medium
         )
-        self.refresh()
 
-    def findEmptySlot(self):
+    def findEmptySlot(self, ensureMaster=False):
         for (dev, port) in self.iterSlots():
             if not self.getMedia(dev, port):
+                if ensureMaster and (port != 0):
+                    continue
+                    
                 return (dev, port)
 
     def findSlotOf(self, image):
@@ -101,14 +99,14 @@ class StorageController(base.VirtualMachinePart):
         raise Exception("Unknown media value {!r}".format(val))
 
     def iterMediaInfo(self):
-        prefix = "{}-".format(self.name)
+        prefix = "self-"
         lastDevice = None
         out = defaultdict(dict)
-        for (name, value) in self.vm.info.iteritems():
+        for (name, value) in self.info.iteritems():
             if not name.startswith(prefix):
                 continue
             parts = name.rsplit('-', 3)
-            assert parts[0] == self.name
+            assert parts[0] == "self"
             parts.pop(0)
 
             if len(parts) > 1:
@@ -128,4 +126,40 @@ class StorageController(base.VirtualMachinePart):
             out[device][infix] = value
             lastDevice = device
 
-        return out.iteritems()
+        keys = out.keys()
+        keys.sort()
+        for key in keys:
+            yield (key, out[key])
+
+    def _getInfo(self):
+        par = self.parent.info
+        if not par:
+            return None
+
+        ids = str(self._initId)
+        prefix = "storagecontroller"
+        out = OrderedDict()
+        for (name, value) in par.iteritems():
+            if not(name.startswith(prefix) and name.endswith(ids)):
+                continue
+            # else
+            localName = name[len(prefix):-len(ids)]
+            out[localName] = value
+
+        if not out:
+            return None
+
+
+        name = out["name"]
+        namedprefix = "{}-".format(name)
+        for (name, value) in par.iteritems():
+            if not name.startswith(namedprefix):
+                continue
+            localName = "self-{}".format(name[len(namedprefix):])
+            out[localName] = value
+        
+        return out
+
+class ControllerGroup(base.PartGroup):
+
+    cls = StorageController

@@ -1,19 +1,31 @@
 """VM class."""
 import re
 import time
+import datetime
 from collections import defaultdict, OrderedDict
 
 from . import base, util
+from . import vmProps as props
 from ..cli import util, CmdError
+from .storageController import ControllerGroup
 
-class VM(base.RefreshableEntity):
+class VM(base.VMBase):
     
     _blockTimeout = 15
     _attemptCount = 5
 
+    vm = property(lambda self: self)
+    cli = property(lambda s: s.vb.cli)
+
+    memory = props.Int("memory")
+
     name = property(lambda s: s.getProp("name"))
-    idProps = base.VirtualBoxEntity.idProps + ("name", )
+    idProps = ("name", "UUID", "_initId")
     state = property(lambda s: s.getProp("VMState"))
+    ostype = property(lambda s: s.vb.info.ostypes.find(s.getProp("ostype")).id)
+    changeTime = property(lambda s: datetime.datetime.strptime(
+        s.getProp("VMStateChangeTime")[:-3], "%Y-%m-%dT%H:%M:%S.%f"))
+
     running = property(lambda s: s.state == "running")
     paused = property(lambda s: s.state == "paused")
 
@@ -22,35 +34,17 @@ class VM(base.RefreshableEntity):
     reset = lambda s: s.cli.manage.controlvm.reset(s.name)
     powerOff = lambda s: s.cli.manage.controlvm.poweroff(s.name)
 
+    controllers = None
     def __init__(self, *args, **kwargs):
         super(VM, self).__init__(*args, **kwargs)
-        self._controllers = []
+        self.controllers = ControllerGroup(self)
 
     def destroy(self, complete=True):
-        self.cli.manage.unregistervm(name=self.getId(), delete=complete)
+        self.cli.manage.unregistervm(self.getId(), delete=complete)
         super(VM, self).destroy()
 
     def unregister(self, delete=True):
         return self.destroy(complete=delete)
-
-
-    def findControllers(self, type):
-        return (el for el in self._controllers if el.type == type)
-
-    def getControoler(self, name):
-        # Touch 'info' property to ensure that controller registy is up to date
-        self.info
-        for el in self._controllers:
-            if el.name == name:
-                return el
-
-    def createController(self, name, type, **kwargs):
-        assert not self.getControoler(name)
-        self.cli.manage.storagectl(self.UUID, name, add=type)
-        del self.info
-        obj = self.getControoler(name)
-        assert obj.type == type
-        return obj
 
     def start(self, headless=True, blocking=True):
         if self.running:
@@ -73,7 +67,6 @@ class VM(base.RefreshableEntity):
                 errMem = None
 
             for _block in xrange(self._blockTimeout * refreshFreq):
-                self.refresh()
                 if self.running:
                     break
                 time.sleep(1.0 / refreshFreq)
@@ -89,8 +82,6 @@ class VM(base.RefreshableEntity):
             # virtual machine is still running
             return True
         else:
-            for el in self.info.iteritems():
-                print el
             raise Exception("Vm process stopped with return code {}.".format(proc.poll()))
 
     def wait(self, timeout=None):
@@ -103,7 +94,6 @@ class VM(base.RefreshableEntity):
 
         while self.running and timeOk():
             time.sleep(0.1)
-            self.refresh()
 
         return (not self.running)
 
@@ -137,6 +127,10 @@ class VM(base.RefreshableEntity):
     def onInfoUpdate(self):
         super(VM, self).onInfoUpdate()
         nameFields = [el for el in self.info.keys() if el.startswith("storagecontrollername")]
+        _controllers = self._controllers
+        if not _controllers:
+            self._controllers = _controllers = []
+
         if nameFields:
             idRe = re.compile(r"^storagecontrollername(\d+)$")
             ids = []
@@ -145,7 +139,7 @@ class VM(base.RefreshableEntity):
                 ids.append(int(match.group(1)))
 
             destroyed = []
-            for contr in self._controllers:
+            for contr in _controllers:
                 if contr.idx in ids:
                     ids.remove(contr.idx)
                 else:
@@ -155,10 +149,7 @@ class VM(base.RefreshableEntity):
                 el.onDestroyed()
             for idx in ids:
                 # New controllers
-                self._controllers.append(StorageController(self, idx))
-
-    def onStorageDestroyed(self, obj):
-        self.refresh()
+                _controllers.append(StorageController(self, idx))
 
     def _getInfo(self):
         txt = self.cli.manage.showvminfo(self._initId)
@@ -166,3 +157,12 @@ class VM(base.RefreshableEntity):
             return OrderedDict(util.parseMachineReadableFmt(txt))
         else:
             return None
+
+    def setProp(self, name, value):
+        self.update({name: value})
+
+    def update(self, props):
+        cmd = []
+        for (name, value) in props.iteritems():
+            cmd.extend(("--" + name, value))
+        self.cli.manage.modifyvm(self.id, *cmd)

@@ -1,5 +1,7 @@
 """Base classes for logical virtualbox structure."""
 
+from .util import boundProperty
+
 class ElementGroup(object):
 
     _elements = None
@@ -27,9 +29,13 @@ class ElementGroup(object):
 
 class VirtualBoxElement(object):
     
-    def __init__(self, vb):
+    vb = property(lambda s: s.parent.vb)
+    cli = property(lambda s: s.parent.vb.cli)
+    parent = None
+
+    def __init__(self, parent):
         super(VirtualBoxElement, self).__init__()
-        self.vb = vb
+        self.parent = parent
 
 class VirtualBoxEntityType(VirtualBoxElement):
 
@@ -54,7 +60,7 @@ class VirtualBoxEntityType(VirtualBoxElement):
         raise NotImplementedError
 
     def get(self, objId):
-        newObj = self.cls(self, self.vb, objId)
+        newObj = self.cls(self, objId)
         uuid = newObj.UUID
         if uuid is None:
             self._unknownObjects.append(newObj)
@@ -81,12 +87,14 @@ class VirtualBoxEntityType(VirtualBoxElement):
 
 class VirtualBoxEntity(VirtualBoxElement):
 
+    UUID = boundProperty(lambda s: s.getProp("UUID"))
     idProps = ("UUID", "_initId")
+    id = property(lambda s: s.getId())
 
-    def __init__(self, parent, vb, id):
-        super(VirtualBoxEntity, self).__init__(vb)
+    def __init__(self, parent, id):
+        super(VirtualBoxEntity, self).__init__(parent)
         self._initId = id
-        self.parent = parent
+        self.cli.addPreCmdExecListener(self._onExecCmd)
 
     def getProp(self, name, default=None):
         if self.info:
@@ -110,14 +118,6 @@ class VirtualBoxEntity(VirtualBoxElement):
     def info(self):
         self._info = None
 
-    _uuidCache = None
-    @property
-    def UUID(self):
-        """UUID property with no option of un-caching UUID."""
-        if self._uuidCache is None:
-            self._uuidCache = self.getProp("UUID")
-        return self._uuidCache
-
     def _getInfo(self):
         raise NotImplementedError
 
@@ -128,13 +128,29 @@ class VirtualBoxEntity(VirtualBoxElement):
         self.parent.onChange(self)
 
     def getId(self):
+        return self.iterIds().next()
+
+    def iterIds(self):
         for name in self.idProps:
             val = getattr(self, name)
             if val:
-                return val
+                yield val
 
     def onInfoUpdate(self):
         pass
+
+    def _onExecCmd(self, source, cmd):
+        if source.changesVmState:
+            doExec = False
+            for myId in self.iterIds():
+                if str(myId) in cmd:
+                    doExec = True
+                    break
+            if doExec:
+                self._scheduleRefreshInfo()
+
+    def _scheduleRefreshInfo(self):
+        del self.info
 
     def __repr__(self):
         return "<{} id={!r} uuid={!r}>".format(self.__class__.__name__, self._initId, self.UUID)
