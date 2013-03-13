@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 import unittest
@@ -8,6 +9,7 @@ class TestVirtualBox(unittest.TestCase):
 
     def setUp(self):
         import vbox
+        logging.basicConfig(level=logging.DEBUG)
         self.vb = vbox.VirtualBox()
 
     def testListAll(self):
@@ -124,13 +126,21 @@ class TestVirtualBox(unittest.TestCase):
         self.assertFalse(vm.running)
         vm.destroy()
 
-
     def testChangeVmProps(self):
         vm = self.vb.vms.create(register=True)
         vm.memory = 512
         self.assertEqual(vm.memory, 512)
         vm.destroy()
 
-    def testNicAttach(self):
+    def testAANicAttach(self):
         vm = self.vb.vms.create(register=True)
+        print len(vm.nics)
+        print vm.nics[1].type
+        nic = vm.nics[1]
+        nic.type = "hostonly"
+        nic.cableConnected = True
+        print vm.nics[1].info
+        nic.cableConnected = False
+        print vm.nics[1].info
         vm.destroy()
+        1/0

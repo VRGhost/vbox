@@ -2,24 +2,27 @@
 from . import chgCmds, infoCmds, base
 from .list import List
 
-class VBoxManage(base.Command):
+class VBoxManage(base.CliVirtualBoxElement):
     """Python representation of VboxManage executable."""
 
-    def __init__(self, vb, executable="VBoxManage"):
-        super(VBoxManage, self).__init__(vb, executable)
+    _cliAccessor = None
+    
+    def __init__(self, parent, executable="VBoxManage"):
+        super(VBoxManage, self).__init__(parent)
+        self._cliAccessor = _cli = base.Command(self, executable)
 
         _parts = {
-            "controlvm": chgCmds.ControlVm(self),
-            "createhd": chgCmds.CreateHD(self),
-            "createvm": chgCmds.CreateVM(self),
-            "list": List(self),
-            "showhdinfo": infoCmds.ShowHdInfo(self),
-            "showvminfo": infoCmds.ShowVmInfo(self),
-            "startvm": chgCmds.StartVm(self),
-            "storageattach": chgCmds.StorageAttach(self),
-            "storagectl": chgCmds.StorageCtl(self),
-            "unregistervm": chgCmds.UnregisterVM(self),
-            "modifyvm": chgCmds.ModifyVm(self),
+            "controlvm": chgCmds.ControlVm(_cli),
+            "createhd": chgCmds.CreateHD(_cli),
+            "createvm": chgCmds.CreateVM(_cli),
+            "list": List(_cli),
+            "showhdinfo": infoCmds.ShowHdInfo(_cli),
+            "showvminfo": infoCmds.ShowVmInfo(_cli),
+            "startvm": chgCmds.StartVm(_cli),
+            "storageattach": chgCmds.StorageAttach(_cli),
+            "storagectl": chgCmds.StorageCtl(_cli),
+            "unregistervm": chgCmds.UnregisterVM(_cli),
+            "modifyvm": chgCmds.ModifyVm(_cli),
         }
 
         for (name, obj) in _parts.iteritems():
@@ -29,5 +32,10 @@ class VBoxManage(base.Command):
 
     def addPreCmdExecListener(self, cb):
         _cancellers = [el.addPreCmdExecListener(cb)
+            for el in self._executables]
+        return lambda: [fn() for fn in _cancellers]
+
+    def addPostCmdExecListener(self, cb):
+        _cancellers = [el.addPostCmdExecListener(cb)
             for el in self._executables]
         return lambda: [fn() for fn in _cancellers]

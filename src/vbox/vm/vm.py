@@ -8,8 +8,9 @@ from . import base, util
 from . import vmProps as props
 from ..cli import util, CmdError
 from .storageController import ControllerGroup
+from .nic import NicGroup
 
-class VM(base.VMBase):
+class VM(base.VirtualBoxEntity):
     
     _blockTimeout = 15
     _attemptCount = 5
@@ -35,9 +36,12 @@ class VM(base.VMBase):
     powerOff = lambda s: s.cli.manage.controlvm.poweroff(s.name)
 
     controllers = None
+
     def __init__(self, *args, **kwargs):
         super(VM, self).__init__(*args, **kwargs)
         self.controllers = ControllerGroup(self)
+        self.nics = NicGroup(self)
+        self.cli.addPostCmdExecListener(self._onExecCmd)
 
     def destroy(self, complete=True):
         self.cli.manage.unregistervm(self.getId(), delete=complete)
@@ -101,55 +105,32 @@ class VM(base.VMBase):
     def ide(self):
         typ = "ide"
         name = "Default {!r} Controller".format(typ)
-        obj = self.getControoler(name)
+        obj = self.controllers.get(type=typ, name=name)
         if not obj:
-            obj = self.createController(name, typ)
+            obj = self.controllers.create(name=name, type=typ)
         return obj
 
     @property
     def sata(self):
         typ = "sata"
         name = "Default {!r} Controller".format(typ)
-        obj = self.getControoler(name)
+        obj = self.controllers.get(type=typ, name=name)
         if not obj:
-            obj = self.createController(name, typ)
+            obj = self.controllers.create(name=name, type=typ)
         return obj
 
     @property
     def floppy(self):
         typ = "floppy"
         name = "Default {!r} Controller".format(typ)
-        obj = self.getControoler(name)
+        obj = self.controllers.get(type=typ, name=name)
         if not obj:
-            obj = self.createController(name, typ)
+            obj = self.controllers.create(name=name, type=typ)
         return obj
 
     def onInfoUpdate(self):
         super(VM, self).onInfoUpdate()
-        nameFields = [el for el in self.info.keys() if el.startswith("storagecontrollername")]
-        _controllers = self._controllers
-        if not _controllers:
-            self._controllers = _controllers = []
-
-        if nameFields:
-            idRe = re.compile(r"^storagecontrollername(\d+)$")
-            ids = []
-            for str in nameFields:
-                match = idRe.match(str)
-                ids.append(int(match.group(1)))
-
-            destroyed = []
-            for contr in _controllers:
-                if contr.idx in ids:
-                    ids.remove(contr.idx)
-                else:
-                    # Controller is no longer part of VM
-                    destroyed.append(contr)
-            for el in destroyed:
-                el.onDestroyed()
-            for idx in ids:
-                # New controllers
-                _controllers.append(StorageController(self, idx))
+        self.controllers.updateInfo(True)
 
     def _getInfo(self):
         txt = self.cli.manage.showvminfo(self._initId)
@@ -159,10 +140,20 @@ class VM(base.VMBase):
             return None
 
     def setProp(self, name, value):
-        self.update({name: value})
+        self.modify({name: value})
 
-    def update(self, props):
+    def modify(self, props):
         cmd = []
         for (name, value) in props.iteritems():
             cmd.extend(("--" + name, value))
         self.cli.manage.modifyvm(self.id, *cmd)
+
+    def _onExecCmd(self, source, cmd, rc):
+        if source.changesVmState:
+            doExec = False
+            for myId in self.iterIds():
+                if str(myId) in cmd:
+                    doExec = True
+                    break
+            if doExec:
+                self.updateInfo(True)

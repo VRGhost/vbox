@@ -1,4 +1,4 @@
-from . import base
+from .. import base
 
 class RemovableMedium(base.VirtualBoxMedium):
 

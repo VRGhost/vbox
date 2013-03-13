@@ -1,5 +1,6 @@
 """VM storage controller."""
 from collections import OrderedDict, defaultdict
+import re
 
 from . import base
 
@@ -132,7 +133,7 @@ class StorageController(base.VirtualMachinePart):
             yield (key, out[key])
 
     def _getInfo(self):
-        par = self.parent.info
+        par = self.vm.info
         if not par:
             return None
 
@@ -162,4 +163,6 @@ class StorageController(base.VirtualMachinePart):
 
 class ControllerGroup(base.PartGroup):
 
-    cls = StorageController
+    parentRe = re.compile(r"^storagecontrollername(\d+)$")
+    childCls = StorageController
+

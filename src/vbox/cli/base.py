@@ -1,13 +1,18 @@
 from collections import defaultdict
 from distutils.spawn import find_executable
-import weakref
-
 import os
 import subprocess
+import weakref
 
 from .. import base
+from .popen import Popen
 
-class TrailingCmd(base.VirtualBoxElement):
+VirtualBoxElement = base.VirtualBoxElement
+
+class CliVirtualBoxElement(VirtualBoxElement):
+    cliAccessLock = property(lambda s: s.parent.cliAccessLock)
+
+class TrailingCmd(CliVirtualBoxElement):
 
     head = None
     changesVmState = False
@@ -33,8 +38,14 @@ class TrailingCmd(base.VirtualBoxElement):
     def addPreCmdExecListener(self, cb):
         return self._addRef("pre", cb)
 
+    def addPostCmdExecListener(self, cb):
+        return self._addRef("post", cb)
+
     def _callPreCmdExec(self, cmd):
         self._callRefs("pre", cmd=cmd)
+
+    def _callPostCmdExec(self, cmd, rc):
+        self._callRefs("post", cmd=cmd, rc=rc)
 
     def _callRefs(self, name, **kwargs):
         kwargs["source"] = self
@@ -78,8 +89,6 @@ class TrailingCmd(base.VirtualBoxElement):
 class Command(TrailingCmd):
     """Python representation of VboxManage executable."""
 
-    lock = property(lambda s: s.parent.cliAccessLock)
-
     def __init__(self, parent, executable):
         super(Command, self).__init__(parent)
         self.head = find_executable(executable)
@@ -96,7 +105,7 @@ class Command(TrailingCmd):
         return tuple(rv)
 
     def call(self, tail):
-        with self.lock:
+        with self.cliAccessLock:
             (cmd, proc) = self.popen(tail,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -120,7 +129,12 @@ class Command(TrailingCmd):
 
     def popen(self, tail, **kwargs):
         cmd = self.getCmd(tail)
-        with self.lock:
+        with self.cliAccessLock:
             self._callPreCmdExec(cmd)
-            proc = subprocess.Popen(cmd, **kwargs)
+            finishFn = lambda proc: self._callPostCmdExec(cmd, proc.returncode)
+            proc = Popen(
+                cmd, 
+                onFinish=finishFn,
+                **kwargs
+            )
         return (cmd, proc)

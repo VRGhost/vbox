@@ -6,6 +6,7 @@ from . import subCmd, util
 
 class List(subCmd.Base):
 
+    changesVmState = False
     PlainOutputs = (
         "systemproperties", "hostinfo")
     GroupOutputs = (

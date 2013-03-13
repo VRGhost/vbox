@@ -7,6 +7,8 @@ from . import (
 
 class ShowHdInfo(subCmd.PlainCall):
 
+    changesVmState = False
+
     def getRcHandlers(self):
         return {
             1: lambda cmd, txt: None
@@ -14,6 +16,8 @@ class ShowHdInfo(subCmd.PlainCall):
 
 
 class ShowVmInfo(subCmd.PlainCall):
+
+    changesVmState = False
 
     def getRcHandlers(self):
         return {

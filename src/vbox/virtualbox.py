@@ -6,7 +6,6 @@ from . import (
     cli, 
     hdd,
     info,
-    mediums,
     vm,
 )
 
@@ -115,5 +114,5 @@ class VirtualBox(base.ElementGroup):
         return {
             "hdd": _HDD(self),
             "vms": _VMs(self),
-            "mediums": mediums.HostMediums(self)
+            "mediums": vm.mediums.HostMediums(self)
         }

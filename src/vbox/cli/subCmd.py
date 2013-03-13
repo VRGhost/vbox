@@ -14,11 +14,21 @@ class Base(base.TrailingCmd):
     
     # Name that this subcommand maps to
     errClass = CmdError
+    changesVmState = None
 
     def __init__(self, parent):
         super(Base, self).__init__(parent)
+        # enforce `changesVmState` to be non-changable
+        val = self.__class__.changesVmState
+        if not isinstance(val, property):
+            assert self.changesVmState in (True, False), self.changesVmState
+            self.__class__.changesVmState = property(lambda s: val)
+
         if self.head == None:
             self.head = self.__class__.__name__.lower()
+
+        self.parent.addPreCmdExecListener(self._onParentPreExec)
+        self.parent.addPostCmdExecListener(self._onParentPostExec)
 
     def getRcHandlers(self):
         return {}
@@ -27,9 +37,7 @@ class Base(base.TrailingCmd):
         raise self.errClass(cmd, rc, out)
 
     def call(self, tail):
-        cmd = self.getCmd(tail)
-        self._callPreCmdExec(cmd)
-        return self.parent.call(cmd)
+        return self.parent.call(self.getCmd(tail))
 
     def checkOutput(self, tail):
         (rc, cmd, out) = self.call(tail)
@@ -40,6 +48,14 @@ class Base(base.TrailingCmd):
             return self.onError(rc, cmd, out)
         else:
             return out
+
+    def _onParentPreExec(self, source, cmd):
+        if self.head in cmd:
+            self._callPreCmdExec(cmd)
+
+    def _onParentPostExec(self, source, cmd, rc):
+        if self.head in cmd:
+            self._callPostCmdExec(cmd, rc)
 
 
 class Generic(Base):

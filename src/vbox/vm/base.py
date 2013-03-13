@@ -1,37 +1,42 @@
 from .. import base
 
-class VMBase(base.VirtualBoxEntity):
-    
-    vm = cli = None
+VirtualBoxEntity = base.VirtualBoxEntity
 
-    def _scheduleRefreshInfo(self):
-        super(VMBase, self)._scheduleRefreshInfo()
-        del self.vm.info
-
-class VirtualMachinePart(VMBase):
-    
+class VmElement(base.InfoKeeper):
     vm = property(lambda s: s.parent.vm)
     cli = property(lambda s: s.parent.cli)
+
+    _vmInfo = None
+    @property
+    def info(self):
+        if self.vm.info != self._vmInfo:
+            self.updateInfo(force=True)
+            self._vmInfo = self.vm.info.copy()
+        return super(VmElement, self).info
+
+class VirtualMachinePart(VmElement):
+    
+    _initId = None
     idx = property(lambda s: s._initId)
+
+    def __init__(self, parent, id):
+        super(VirtualMachinePart, self).__init__(parent)
+        self._initId = id
 
     def onDestroyed(self):
         """Function handler executed when VM had detected that given element is no longer present in the VM."""
 
-    def iterIds(self):
-        # This will allow for virtual part to refresh its info cache whenever
-        # its parent vm executes CLI command
-        return self.vm.iterIds()
-
-class PartGroup(VirtualMachinePart):
+class PartGroup(VmElement):
     """An iterable part group."""
 
-    def _getInfo(self):
-        pInfo = self.parent.info
-        1/0
+    childCls = parentRe = None
 
-    def __iter__(self):
-        return self.info.itervalues()
-
+    def iterkeys(self):
+        if self.info:
+            rv = iter(self.info)
+        else:
+            rv = iter(())
+        return rv
 
     def find(self, name=None, type=None):
         if name and type:
@@ -43,16 +48,71 @@ class PartGroup(VirtualMachinePart):
         else:
             match = lambda cnt: True
 
-        for el in self:
-            if match(el):
-                return el
+        if self.info:
+            for el in self.info.itervalues():
+                if match(el):
+                    yield el
 
     def get(self, *args, **kwargs):
         it = self.find(*args, **kwargs)
-        return it.next()
+        try:
+            return it.next()
+        except StopIteration:
+            return None
 
     def create(self, name, type):
         assert not self.get(name=name)
         self.cli.manage.storagectl(
             self.vm.id, name, add=type)
-        return self.get(name=name, type=type)
+        rv = self.get(name=name, type=type)
+        assert rv
+        return rv
+
+    def __iter__(self):
+        if self.info:
+            rv = self.info.itervalues()
+        else:
+            rv = iter(())
+        return rv
+
+    def __len__(self):
+        return len(self.info)
+
+    def __getitem__(self, key):
+        return self.info[key]
+
+    def _getInfo(self):
+        pInfo = self.parent.info
+
+        if not pInfo:
+            return None
+
+        parentRe = self.parentRe
+
+        out = {}
+
+        controllerIds = set()
+        for name in pInfo.iterkeys():
+            match = parentRe.match(name)
+            if match:
+                elId = match.group(1)
+                elId = int(elId)
+                controllerIds.add(elId)
+
+        if self._info:
+            existing = frozenset(self._info.keys())
+        else:
+            existing = frozenset()
+
+        for destroyed in (existing - controllerIds):
+            obj = self._info[destroyed]
+            obj.onDestroyed()
+
+        for preserved in (existing.intersection(controllerIds)):
+            out[preserved] = self._info[preserved]
+
+        cls = self.childCls
+        for added in (controllerIds - existing):
+            out[added] = cls(self, added)
+        
+        return out

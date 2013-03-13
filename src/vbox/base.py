@@ -1,6 +1,8 @@
 """Base classes for logical virtualbox structure."""
+import threading
 
 from .util import boundProperty
+
 
 class ElementGroup(object):
 
@@ -84,29 +86,17 @@ class VirtualBoxEntityType(VirtualBoxElement):
     def onChange(self, object):
         self._listUpToDate = False
 
+class InfoKeeper(VirtualBoxElement):
 
-class VirtualBoxEntity(VirtualBoxElement):
-
-    UUID = boundProperty(lambda s: s.getProp("UUID"))
-    idProps = ("UUID", "_initId")
-    id = property(lambda s: s.getId())
-
-    def __init__(self, parent, id):
-        super(VirtualBoxEntity, self).__init__(parent)
-        self._initId = id
-        self.cli.addPreCmdExecListener(self._onExecCmd)
-
-    def getProp(self, name, default=None):
-        if self.info:
-            return self.info.get(name, default)
-        else:
-            return default
+    def __init__(self, *args, **kwargs):
+        super(InfoKeeper, self).__init__(*args, **kwargs)
+        self._infoUpdateLock = threading.Lock()
 
     _info = None
     @property
     def info(self):
-        if not self._info:
-            self._info = self._getInfo()
+        updated = self.updateInfo()
+        if updated:
             self.onInfoUpdate()
         if self._info:
             rv = self._info.copy()
@@ -118,8 +108,40 @@ class VirtualBoxEntity(VirtualBoxElement):
     def info(self):
         self._info = None
 
+    def getProp(self, name, default=None):
+        if self.info:
+            return self.info.get(name, default)
+        else:
+            return default
+
+    def updateInfo(self, force=False):
+        locked = self._infoUpdateLock.acquire(False)
+        if not locked:
+            # Recursive call prevention
+            return False
+        try:
+            if (not self._info) or force:
+                self._info = self._getInfo()
+                return True
+            return False
+        finally:
+            self._infoUpdateLock.release()
+
+
     def _getInfo(self):
         raise NotImplementedError
+
+    def onInfoUpdate(self):
+        pass
+
+class VirtualBoxObject(InfoKeeper):
+
+    idProps = ("_initId", )
+    id = property(lambda s: s.getId())
+
+    def __init__(self, parent, id):
+        super(VirtualBoxObject, self).__init__(parent)
+        self._initId = id
 
     def destroy(self):
         self.onChange()
@@ -136,24 +158,13 @@ class VirtualBoxEntity(VirtualBoxElement):
             if val:
                 yield val
 
-    def onInfoUpdate(self):
-        pass
-
-    def _onExecCmd(self, source, cmd):
-        if source.changesVmState:
-            doExec = False
-            for myId in self.iterIds():
-                if str(myId) in cmd:
-                    doExec = True
-                    break
-            if doExec:
-                self._scheduleRefreshInfo()
-
-    def _scheduleRefreshInfo(self):
-        del self.info
-
     def __repr__(self):
-        return "<{} id={!r} uuid={!r}>".format(self.__class__.__name__, self._initId, self.UUID)
+        return "<{} id={!r} uuid={!r}>".format(
+            self.__class__.__name__, self._initId, self.UUID)
+
+class VirtualBoxEntity(VirtualBoxObject):
+    UUID = boundProperty(lambda s: s.getProp("UUID"))
+    idProps = ("UUID", "_initId")
 
 class VirtualBoxMedium(VirtualBoxEntity):
 
