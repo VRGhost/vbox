@@ -23,6 +23,7 @@ class VBoxManage(base.CliVirtualBoxElement):
             "storagectl": chgCmds.StorageCtl(_cli),
             "unregistervm": chgCmds.UnregisterVM(_cli),
             "modifyvm": chgCmds.ModifyVm(_cli),
+            "clonevm": chgCmds.CloneVM(_cli),
         }
 
         for (name, obj) in _parts.iteritems():

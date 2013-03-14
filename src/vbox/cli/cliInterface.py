@@ -4,12 +4,15 @@ from .. import base
 
 from .vboxManage import VBoxManage
 
+from . import util
+
 class CommandLineInterface(base.VirtualBoxElement):
     
     def __init__(self, *args, **kwargs):
         super(CommandLineInterface, self).__init__(*args, **kwargs)
         self.cliAccessLock = threading.RLock()
         self.manage = VBoxManage(self)
+        self.util = util
         self.programs = (
             self.manage,
         )

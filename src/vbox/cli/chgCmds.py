@@ -37,6 +37,12 @@ class CreateVM(Generic):
     flags = ("register", )
     mandatory = ("name", )
 
+class CloneVM(VmCmd):
+
+    changesVmState = False
+    opts = ("snapshot", "mode", "options", "name",
+        "groups", "basefolder", "uuid")
+    flags = ("register", )
 
 class UnregisterVM(VmCmd):
 

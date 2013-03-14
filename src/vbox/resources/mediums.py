@@ -66,11 +66,7 @@ class FloppyType(MediaType):
     def getFullList(self):
         return self.vb.cli.manage.list.floppies()
         
-class HostMediums(base.ElementGroup):
-    
-    def __init__(self, vb):
-        self.vb = vb
-        super(HostMediums, self).__init__()        
+class HostMediums(base.ElementGroup):   
 
     def getElements(self):
         return {

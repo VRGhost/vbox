@@ -1,4 +1,4 @@
-from collections import defaultdict
+import collections
 from distutils.spawn import find_executable
 import os
 import subprocess
@@ -19,7 +19,7 @@ class TrailingCmd(CliVirtualBoxElement):
 
     def __init__(self, *args, **kwargs):
         super(TrailingCmd, self).__init__(*args, **kwargs)
-        self._refs = defaultdict(list)
+        self._refs = collections.defaultdict(list)
 
     def getCmd(self, tail):
         cmd = [self.head]
@@ -97,9 +97,17 @@ class Command(TrailingCmd):
 
     def getCmd(self, tail):
         cmd = super(Command, self).getCmd(tail)
+        return self.convertCmd(cmd)
+
+    def convertCmd(self, cmd):
         rv = []
         for el in cmd:
-            if not isinstance(el, basestring):
+            notString = not isinstance(el, basestring)
+
+            if isinstance(el, collections.Iterable) and notString:
+                el = ','.join(self.convertCmd(el))
+
+            if notString:
                 el = str(el)
             rv.append(el)
         return tuple(rv)
@@ -131,6 +139,7 @@ class Command(TrailingCmd):
         cmd = self.getCmd(tail)
         with self.cliAccessLock:
             self._callPreCmdExec(cmd)
+            print cmd
             finishFn = lambda proc: self._callPostCmdExec(cmd, proc.returncode)
             proc = Popen(
                 cmd, 

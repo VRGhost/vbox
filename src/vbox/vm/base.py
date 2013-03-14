@@ -1,6 +1,7 @@
 from .. import base
 
 VirtualBoxEntity = base.VirtualBoxEntity
+VirtualBoxEntityType = base.VirtualBoxEntityType
 
 class VmElement(base.InfoKeeper):
     vm = property(lambda s: s.parent.vm)
@@ -25,6 +26,24 @@ class VirtualMachinePart(VmElement):
 
     def onDestroyed(self):
         """Function handler executed when VM had detected that given element is no longer present in the VM."""
+
+    def getPropName(self, name):
+        """Function to perform tranlslation from name local to the element to the name global for the whole VM."""
+        return name
+
+    def getProp(self, name):
+        name = self.getPropName(name)
+        return super(VirtualMachinePart, self).getProp(name)
+
+    def setProp(self, name, value):
+        name = self.getPropName(name)
+        return self.vm.setProp(name, value)
+
+    def control(self, params, quiet=False):
+        print params
+        newParams = dict((self.getPropName(name), value)
+            for (name, value) in params.iteritems())
+        return self.vm.control(newParams, quiet=quiet)
 
 class PartGroup(VmElement):
     """An iterable part group."""

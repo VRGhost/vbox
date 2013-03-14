@@ -3,13 +3,22 @@ import threading
 
 from .util import boundProperty
 
+class VirtualBoxElement(object):
+    
+    vb = property(lambda s: s.parent.vb)
+    cli = property(lambda s: s.parent.vb.cli)
+    parent = None
 
-class ElementGroup(object):
+    def __init__(self, parent):
+        super(VirtualBoxElement, self).__init__()
+        self.parent = parent
+
+class ElementGroup(VirtualBoxElement):
 
     _elements = None
 
-    def __init__(self):
-        super(ElementGroup, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(ElementGroup, self).__init__(*args, **kwargs)
         self._elements = self.getElements()
         for (name, value) in self._elements.iteritems():
             setattr(self, name, value)
@@ -28,16 +37,6 @@ class ElementGroup(object):
             obj = typ.find(uuid)
             if obj is not None:
                 return obj
-
-class VirtualBoxElement(object):
-    
-    vb = property(lambda s: s.parent.vb)
-    cli = property(lambda s: s.parent.vb.cli)
-    parent = None
-
-    def __init__(self, parent):
-        super(VirtualBoxElement, self).__init__()
-        self.parent = parent
 
 class VirtualBoxEntityType(VirtualBoxElement):
 

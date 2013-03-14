@@ -48,6 +48,7 @@ class StorageController(base.VirtualMachinePart):
             port=slot[0], device=slot[1], type=type,
             medium=medium
         )
+        return slot
 
     def findEmptySlot(self, ensureMaster=False):
         for (dev, port) in self.iterSlots():

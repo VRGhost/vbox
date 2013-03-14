@@ -86,7 +86,7 @@ class TestVirtualBox(unittest.TestCase):
 
     def testEmptyDvdAttach(self):
         vm = self.vb.vms.create(register=True)
-        img = self.vb.mediums.dvd.empty
+        img = self.vb.resources.mediums.dvd.empty
         vm.ide.attach(img)
         (device, port) = vm.ide.findSlotOf(img)
         img2 = vm.ide.getMedia(device, port)
@@ -95,7 +95,7 @@ class TestVirtualBox(unittest.TestCase):
 
     def testEmptyFloppyAttach(self):
         vm = self.vb.vms.create(register=True)
-        img = self.vb.mediums.floppy.empty
+        img = self.vb.resources.mediums.floppy.empty
         vm.floppy.attach(img)
         (device, port) = vm.floppy.findSlotOf(img)
         img2 = vm.floppy.getMedia(device, port)
@@ -104,26 +104,26 @@ class TestVirtualBox(unittest.TestCase):
 
     def testFdBoot(self):
         vm = self.vb.vms.create(register=True)
-        img = self.vb.mediums.floppy.get(FD_IMG)
+        img = self.vb.resources.mediums.floppy.get(FD_IMG)
         vm.floppy.attach(img, ensureBootable=True)
-        self.assertFalse(vm.running)
+        self.assertFalse(vm.state.running)
         oldTime = vm.changeTime
-        vm.start()
-        self.assertTrue(vm.running)
+        vm.state.start()
+        self.assertTrue(vm.state.running)
         vm.wait(timeout=2)
         # this FD image simply stays turned on.
-        self.assertTrue(vm.running)
-        vm.pause()
-        self.assertFalse(vm.running)
-        self.assertTrue(vm.paused)
-        vm.resume()
-        self.assertTrue(vm.running)
+        self.assertTrue(vm.state.running)
+        vm.state.pause()
+        self.assertFalse(vm.state.running)
+        self.assertTrue(vm.state.paused)
+        vm.state.resume()
+        self.assertTrue(vm.state.running)
         # Reset
-        vm.reset()
-        self.assertTrue(vm.running)
-        vm.powerOff()
+        vm.state.reset()
+        self.assertTrue(vm.state.running)
+        vm.state.powerOff()
         self.assertGreater(vm.changeTime, oldTime)
-        self.assertFalse(vm.running)
+        self.assertFalse(vm.state.running)
         vm.destroy()
 
     def testChangeVmProps(self):
@@ -132,15 +132,96 @@ class TestVirtualBox(unittest.TestCase):
         self.assertEqual(vm.memory, 512)
         vm.destroy()
 
-    def testAANicAttach(self):
+    def testNicAttach(self):
         vm = self.vb.vms.create(register=True)
-        print len(vm.nics)
-        print vm.nics[1].type
         nic = vm.nics[1]
+        self.assertEqual(nic.type, None)
         nic.type = "hostonly"
+        self.assertEqual(nic.type, "hostonly")
+        self.assertEqual(len(nic.mac), 12)
         nic.cableConnected = True
-        print vm.nics[1].info
+        self.assertTrue(vm.nics[1].cableConnected)
         nic.cableConnected = False
-        print vm.nics[1].info
+        self.assertFalse(vm.nics[1].cableConnected)
         vm.destroy()
+
+    def testSimpleCloneVm(self):
+        vm = self.vb.vms.create(register=True)
+        self.assertTrue(vm.registered)
+        vm2 = vm.clone(name="Clone of {parent.name}.")
+        expectedName = "Clone of {}.".format(vm.name)
+        self.assertEqual(vm2.name, expectedName)
+        self.assertTrue(vm2.registered)
+        vm.destroy()
+        vm2.destroy()
+        
+    def testCloneVmOptions(self):
+        vm = self.vb.vms.create(register=True)
+        hdd = self.vb.hdd.create(size=42)
+        self.assertTrue(hdd.name)
+        hddSlot = vm.ide.attach(hdd)
+
+        vm.nics[1].type = "hostonly"
+        origMac = vm.nics[1].mac
+        self.assertEqual(len(origMac), 12)
+        # Clone with no preservation of anything
+        vm2 = vm.clone()
+        self.assertEqual(len(vm2.nics[1].mac), 12)
+        self.assertNotEqual(vm2.nics[1].mac, origMac)
+        hdd2 = vm2.ide.getMedia(*hddSlot)
+        self.assertTrue(hdd2)
+        self.assertTrue(hdd2.name)
+        self.assertNotEqual(hdd2.name, hdd.name)
+        vm2.destroy()
+        # Clone and preserve MAC, but not HDD name
+        vm3 = vm.clone(options=["keepallmacs", ])
+        self.assertEqual(len(vm3.nics[1].mac), 12)
+        self.assertEqual(vm3.nics[1].mac, origMac)
+        hdd2 = vm3.ide.getMedia(*hddSlot)
+        self.assertTrue(hdd2)
+        self.assertTrue(hdd2.name)
+        self.assertNotEqual(hdd2.name, hdd.name)
+        vm3.destroy()
+        # Clone and preserve MAC and HDD name
+        vm4 = vm.clone(options=["keepallmacs", "keepdisknames"])
+        self.assertEqual(len(vm4.nics[1].mac), 12)
+        self.assertEqual(vm4.nics[1].mac, origMac)
+        hdd2 = vm4.ide.getMedia(*hddSlot)
+        self.assertTrue(hdd2)
+        self.assertTrue(hdd2.name)
+        self.assertEqual(hdd2.name, hdd.name)
+        vm4.destroy()
+        
+        vm.destroy()
+
+    def testAAOnlineNicControlChanges(self):
+        vm = self.vb.vms.create(register=True)
+
+        img = self.vb.resources.mediums.floppy.get(FD_IMG)
+        vm.floppy.attach(img, ensureBootable=True)
+
+        print tuple(el.type for el in vm.nics)
+
+        vm.nics[1].type = "hostonly"
+        vm.cableConnected = True
+        self.assertTrue(vm.cableConnected)
+        vm.cableConnected = False
+        self.assertFalse(vm.cableConnected)
+
+        vm.state.start()
+        self.assertTrue(vm.state.running)
+
+        vm.cableConnected = True
+        self.assertTrue(vm.cableConnected)
+        vm.cableConnected = False
+        self.assertFalse(vm.cableConnected)
+        vm.nics[1].type = "intnet"
+        self.assertEqual(vm.nics[1].type, "intnet")
+        vm.cableConnected = True
+        self.assertTrue(vm.cableConnected)
+        vm.cableConnected = False
+        self.assertFalse(vm.cableConnected)
+
+        
         1/0
+        vm.destroy()

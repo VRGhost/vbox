@@ -4,8 +4,9 @@ class VmProp(object):
 
     _readName = _writeName = None
 
-    def __init__(self, name, cliName=None):
+    def __init__(self, name, cliName=None, control=False):
         self._readName = name
+        self._control = control
         if cliName:
             self._writeName = cliName
         else:
@@ -18,22 +19,47 @@ class VmProp(object):
         return val
 
     def __get__(self, instance, owner):
-        val = instance.getProp(self._readName)
+        assert instance is not None
+
+        if callable(self._readName):
+            name = self._readName(instance)
+        else:
+            name = self._readName
+        val = instance.getProp(name)
         return self.fromCli(val)
 
     def __set__(self, instance, val):
+        if callable(self._writeName):
+            name = self._writeName(instance)
+        else:
+            name = self._writeName
         val = self.toCli(val)
-        return instance.setProp(self._writeName, val)
+
+        instance.setProp(name, val)
+
+        cnt = self._control
+        if cnt:
+            if callable(cnt):
+                cntName = cnt(instance)
+            elif isinstance(cnt, basestring):
+                cntName = cnt
+            else:
+                cntName = name
+            kw = {cntName: val}
+            instance.control(quiet=True, **kw)
+
+class String(VmProp):
+    """Just a class to explicilty state type of a property."""
 
 class Switch(VmProp):
     """on/off property."""
 
     def fromCli(self, val):
-        assert val in ("on", "off")
+        assert val in ("on", "off", None, "none")
         return val == "on"
 
     def toCli(self, val):
-        return bool(val)
+        return "on" if val else "off"
 
 class Int(VmProp):
 
