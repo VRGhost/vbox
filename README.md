@@ -1,4 +1,4 @@
-pyVboxCmd
+VBox
 =========
 
 License: LGPL/BSD.
