@@ -1,6 +1,6 @@
 import os
 
-from . import base
+from .. import base
 
 class HDD(base.VirtualBoxMedium):
     """HDD image."""
@@ -26,6 +26,9 @@ class HDD(base.VirtualBoxMedium):
         fname = self.fname
         return fname and os.path.isfile(fname)
 
+    def clone(self, *args, **kwargs):
+        return self.vb.hdds.clone(self._initId, *args, **kwargs)
+
     def getProp(self, name, default=None):
         if self.info:
             return self.info.get(name, default)
@@ -41,6 +44,6 @@ class HDD(base.VirtualBoxMedium):
     def _getInfo(self):
         out = self.vb.cli.manage.showhdinfo(self._initId)
         if out:
-            return util.parseParams(out)
+            return self.cli.util.parseParams(out)
         else:
             return None

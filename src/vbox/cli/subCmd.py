@@ -112,21 +112,27 @@ class PlainCall(Base):
     def __call__(self, *args):
         return self.checkOutput(args)
 
-class VmCmd(Generic):
+class ArgCmd(Generic):
 
-    def __call__(self, vmName, **kwargs):
-        cmd = self.dictToCmdLine(kwargs)
-        cmd.insert(0, vmName)
+    nargs = 1
+    argnames = ()
+
+    def __call__(self, *args, **kwargs):
+        if len(args) != self.nargs:
+            raise TypeError("{} arguments expected, {} provided.".format(
+                self.nargs, len(args)))
+
+        cmd = []
+        for (pos, val) in enumerate(args):
+            try:
+                name = self.argnames[pos]
+            except LookupError:
+                name = None
+            if name:
+                cmd.append(name)
+            cmd.append(val)
+
+        kwCmd = self.dictToCmdLine(kwargs)
+
+        cmd.extend(kwCmd)
         return self.checkOutput(cmd)
-
-class VmPropSetter(Generic):
-
-    propName = None
-
-    def __call__(self, vmName, propName, **kwargs):
-        cmd = self.dictToCmdLine(kwargs)
-        prefix = [vmName, propName]
-        prop = self.propName
-        if prop:
-            prefix.insert(1, prop)
-        return self.checkOutput(prefix + cmd)

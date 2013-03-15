@@ -40,7 +40,6 @@ class VirtualMachinePart(VmElement):
         return self.vm.setProp(name, value)
 
     def control(self, params, quiet=False):
-        print params
         newParams = dict((self.getPropName(name), value)
             for (name, value) in params.iteritems())
         return self.vm.control(newParams, quiet=quiet)

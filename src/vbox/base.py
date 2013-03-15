@@ -45,8 +45,7 @@ class VirtualBoxEntityType(VirtualBoxElement):
 
     def __init__(self, *args, **kwargs):
         super(VirtualBoxEntityType, self).__init__(*args, **kwargs)
-        self._objIdx = {}
-        self._unknownObjects = []
+        self._objects = []
 
     def create(self):
         self._listUpToDate = False
@@ -62,25 +61,36 @@ class VirtualBoxEntityType(VirtualBoxElement):
 
     def get(self, objId):
         newObj = self.cls(self, objId)
-        uuid = newObj.UUID
-        if uuid is None:
-            self._unknownObjects.append(newObj)
-            rv = newObj
-        elif uuid in self._objIdx:
-            del newObj
-            rv = self._objIdx[uuid]
+        ids = frozenset(newObj.iterIds())
+        for el in self._objects:
+            if ids.intersection(el.iterIds()):
+                del newObj
+                rv = el
+                break
         else:
+            self._objects.append(newObj)
             rv = newObj
-            self._objIdx[uuid] = rv
         return rv
+
+    def iterAll(self, objId):
+        for el in self._objects:
+            if objId in el.iterIds():
+                yield el
 
     def find(self, uuid):
         # Refresh list
         self.list()
-        return self._objIdx.get(uuid)
+        for el in self.iterAll(uuid):
+            return el
+        else:
+            return None
 
     def getInvalidObjects(self):
-        return iter(self._unknownObjects)
+        for el in self._objects:
+            ids = tuple(el.iterIds())
+            minExpected = (el.initId, )
+            if (not ids) or (ids == minExpected):
+                yield el
 
     def onChange(self, object):
         self._listUpToDate = False
@@ -136,6 +146,7 @@ class InfoKeeper(VirtualBoxElement):
 class VirtualBoxObject(InfoKeeper):
 
     idProps = ("_initId", )
+    initId = property(lambda s: s._initId)
     id = property(lambda s: s.getId())
 
     def __init__(self, parent, id):
@@ -158,17 +169,13 @@ class VirtualBoxObject(InfoKeeper):
                 yield val
 
     def __repr__(self):
-        return "<{} id={!r} uuid={!r}>".format(
-            self.__class__.__name__, self._initId, self.UUID)
+        return "<{} id={!r}>".format(self.__class__.__name__, self._initId)
 
 class VirtualBoxEntity(VirtualBoxObject):
     UUID = boundProperty(lambda s: s.getProp("UUID"))
     idProps = ("UUID", "_initId")
 
-class VirtualBoxMedium(VirtualBoxEntity):
 
-    def getVmAttachMedium(self):
-        raise NotImplementedError
-
-    def getVmAttachType(self):
-        raise NotImplementedError
+    def __repr__(self):
+        return "<{} id={!r} uuid={!r}>".format(
+            self.__class__.__name__, self._initId, self.UUID)

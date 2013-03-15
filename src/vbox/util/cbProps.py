@@ -1,12 +1,12 @@
 """Vm property getters/setters/translators."""
 
-class VmProp(object):
+class Prop(object):
 
     _readName = _writeName = None
 
-    def __init__(self, name, cliName=None, control=False):
+    def __init__(self, name, cliName=None, extraCb=False):
         self._readName = name
-        self._control = control
+        self.extraCb = extraCb
         if cliName:
             self._writeName = cliName
         else:
@@ -37,38 +37,31 @@ class VmProp(object):
 
         instance.setProp(name, val)
 
-        cnt = self._control
-        if cnt:
-            if callable(cnt):
-                cntName = cnt(instance)
-            elif isinstance(cnt, basestring):
-                cntName = cnt
-            else:
-                cntName = name
-            kw = {cntName: val}
-            instance.control(quiet=True, **kw)
+        extraCb = self.extraCb
+        if extraCb:
+            extraCb(instance, val)
 
-class String(VmProp):
+class String(Prop):
     """Just a class to explicilty state type of a property."""
 
-class Switch(VmProp):
+class Switch(Prop):
     """on/off property."""
 
+    trueVals = ("on", )
+    falseVals = ("off", "none")
+    outTrue = "on"
+    outFalse = "off"
+
     def fromCli(self, val):
-        assert val in ("on", "off", None, "none")
-        return val == "on"
+        assert (val in self.trueVals) or \
+            (val in self.falseVals) or \
+            (val is None), val
+        return val in self.trueVals
 
     def toCli(self, val):
-        return "on" if val else "off"
+        return self.outTrue if val else self.outFalse
 
-class Int(VmProp):
+class Int(Prop):
 
     def fromCli(self, val):
         return int(val)
-
-def infoed(fn):
-    def __wrapper__(self, *args, **kwargs):
-        # ensure that info cache is updated
-        self.info
-        return fn(self, *args, **kwargs)
-    return property(__wrapper__)

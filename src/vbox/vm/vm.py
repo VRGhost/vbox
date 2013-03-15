@@ -4,9 +4,10 @@ import time
 import datetime
 from collections import defaultdict, OrderedDict
 
+from vbox import util as props
+
 from . import base, util
-from . import vmProps as props
-from ..cli import util, CmdError
+from ..cli import CmdError
 from .storageController import ControllerGroup
 from .nic import NicGroup
 from .state import State
@@ -19,7 +20,8 @@ class VM(base.VirtualBoxEntity):
     vm = property(lambda self: self)
     cli = property(lambda s: s.vb.cli)
 
-    baloon = props.Int("guestmemoryballoon", control=True)
+    baloon = props.Int(
+        "guestmemoryballoon", extraCb=util.controlCb("guestmemoryballoon"))
     memory = props.Int("memory")
     videoMemory = props.Int("vram")
     acpi = props.Switch("acpi")
@@ -62,9 +64,13 @@ class VM(base.VirtualBoxEntity):
         else:
             startvm = lambda: self.cli.manage.startvm(self.name)
 
-        refreshFreq = 10
-        for _att in xrange(self._attemptCount):
-            time.sleep(_att * 2)
+        errMem = None
+
+        for _att in self._loopySleep(lambda: self.state.running):
+            if errMem:
+                # Re-raise error from previous iteration
+                raise errMem
+
             try:
                 out = startvm()
             except CmdError as err:
@@ -72,18 +78,6 @@ class VM(base.VirtualBoxEntity):
                 out = errMem = err
             else:
                 errMem = None
-
-            for _block in xrange(self._blockTimeout * refreshFreq):
-                if self.state.running:
-                    break
-                time.sleep(1.0 / refreshFreq)
-
-            if self.state.running:
-                break
-
-            if errMem:
-                # We hadn't broken out of the loop previously
-                raise errMem
 
         if self.state.running:
             # virtual machine is still running
@@ -103,6 +97,43 @@ class VM(base.VirtualBoxEntity):
             time.sleep(0.1)
 
         return (not self.state.running)
+
+    def powerOff(self, blocking=True):
+        if not self.state.running:
+            return
+
+        self.cli.manage.controlvm.poweroff(self.name)
+
+        if blocking:
+            for _att in self._loopySleep(lambda: not self.state.running):
+                self.updateInfo(True)
+        # virtualbox sometimes is not fast enough to terminate VM process
+        # so do a bit of waiting anyway.
+        time.sleep(0.5)
+
+    def _loopySleep(self, checkCb, attempts=None, timeout=None):
+        if not attempts:
+            attempts = self._attemptCount
+
+        if not timeout:
+            timeout = self._blockTimeout
+
+        refreshFreq = 10
+        completed = False
+
+        for _att in xrange(attempts):
+            time.sleep(_att * 2)
+            # Yield to caller to do his stuff
+            yield
+
+            for _block in xrange(timeout * refreshFreq):
+                if checkCb():
+                    completed = True
+                    break
+                time.sleep(1.0 / refreshFreq)
+
+            if completed:
+                break
 
     @property
     def ide(self):
@@ -146,14 +177,19 @@ class VM(base.VirtualBoxEntity):
     def _getInfo(self):
         txt = self.cli.manage.showvminfo(self._initId)
         if txt:
-            return OrderedDict(util.parseMachineReadableFmt(txt))
+            return OrderedDict(self.cli.util.parseMachineReadableFmt(txt))
         else:
             return None
 
     def setProp(self, name, value):
         self.modify({name: value})
 
-    def modify(self, props):
+    def modify(self, props, quiet=False):
+        if self.state.running:
+            if quiet:
+                return False
+            else:
+                raise Exception("VM in running. Can not {}".format(props))
         modifyVmCmd = []
         for (name, value) in props.iteritems():
             modifyVmCmd.extend(("--" + name, value))
@@ -161,7 +197,6 @@ class VM(base.VirtualBoxEntity):
         self.cli.manage.modifyvm(self.id, *modifyVmCmd)
 
     def control(self, props, quiet=False):
-        print props
         if not self.state.running:
             # Controlvm is only meaningful when VM is running
             if quiet:

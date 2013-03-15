@@ -92,9 +92,9 @@ class StorageController(base.VirtualMachinePart):
         name = val.get("name")
         if name == "emptydrive":
             if self.type == "floppy":
-                return self.vb.mediums.floppy.empty
+                return self.vb.floppies.empty
             else:
-                return self.vb.mediums.dvd.empty
+                return self.vb.dvds.empty
         else:
             raise NotImplementedError(name)
 

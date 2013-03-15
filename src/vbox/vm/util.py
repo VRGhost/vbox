@@ -7,3 +7,8 @@ def mutating(fn):
         finally:
             self.refresh()
     return __wrapper__
+
+def controlCb(name):
+    def __callback__(self, value):
+        self.control({name: value}, quiet=True)
+    return __callback__

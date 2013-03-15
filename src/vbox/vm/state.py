@@ -10,7 +10,7 @@ class State(object):
     pause = lambda s: s.cli.manage.controlvm.pause(s.vm.name)
     resume = lambda s: s.cli.manage.controlvm.resume(s.vm.name)
     reset = lambda s: s.cli.manage.controlvm.reset(s.vm.name)
-    powerOff = lambda s: s.cli.manage.controlvm.poweroff(s.vm.name)
+    powerOff = lambda s, *a, **kw: s.vm.powerOff(*a, **kw)
     start = lambda s, *a, **kw: s.vm.start(*a, **kw)
 
     knownStates = (

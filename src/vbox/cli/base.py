@@ -139,7 +139,6 @@ class Command(TrailingCmd):
         cmd = self.getCmd(tail)
         with self.cliAccessLock:
             self._callPreCmdExec(cmd)
-            print cmd
             finishFn = lambda proc: self._callPostCmdExec(cmd, proc.returncode)
             proc = Popen(
                 cmd, 

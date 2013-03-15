@@ -25,7 +25,7 @@ class TestVirtualBox(unittest.TestCase):
 
     def testCreateHdd(self):
         size = 10 * 1024
-        hdd = self.vb.hdd.create(size=size)
+        hdd = self.vb.hdds.create(size=size)
         self.assertEqual(hdd.size, size)
         fname = hdd.fname
         hdd.destroy()
@@ -77,7 +77,7 @@ class TestVirtualBox(unittest.TestCase):
 
     def testHddAttach(self):
         vm = self.vb.vms.create(register=True)
-        hdd = self.vb.hdd.create(size=42)
+        hdd = self.vb.hdds.create(size=42)
         vm.ide.attach(hdd)
         (device, port) = vm.ide.findSlotOf(hdd)
         hdd2 = vm.ide.getMedia(device, port)
@@ -86,7 +86,7 @@ class TestVirtualBox(unittest.TestCase):
 
     def testEmptyDvdAttach(self):
         vm = self.vb.vms.create(register=True)
-        img = self.vb.resources.mediums.dvd.empty
+        img = self.vb.dvds.empty
         vm.ide.attach(img)
         (device, port) = vm.ide.findSlotOf(img)
         img2 = vm.ide.getMedia(device, port)
@@ -95,7 +95,7 @@ class TestVirtualBox(unittest.TestCase):
 
     def testEmptyFloppyAttach(self):
         vm = self.vb.vms.create(register=True)
-        img = self.vb.resources.mediums.floppy.empty
+        img = self.vb.floppies.empty
         vm.floppy.attach(img)
         (device, port) = vm.floppy.findSlotOf(img)
         img2 = vm.floppy.getMedia(device, port)
@@ -104,7 +104,7 @@ class TestVirtualBox(unittest.TestCase):
 
     def testFdBoot(self):
         vm = self.vb.vms.create(register=True)
-        img = self.vb.resources.mediums.floppy.get(FD_IMG)
+        img = self.vb.floppies.get(FD_IMG)
         vm.floppy.attach(img, ensureBootable=True)
         self.assertFalse(vm.state.running)
         oldTime = vm.changeTime
@@ -157,7 +157,7 @@ class TestVirtualBox(unittest.TestCase):
         
     def testCloneVmOptions(self):
         vm = self.vb.vms.create(register=True)
-        hdd = self.vb.hdd.create(size=42)
+        hdd = self.vb.hdds.create(size=42)
         self.assertTrue(hdd.name)
         hddSlot = vm.ide.attach(hdd)
 
@@ -194,13 +194,13 @@ class TestVirtualBox(unittest.TestCase):
         
         vm.destroy()
 
-    def testAAOnlineNicControlChanges(self):
+    def testOnlineNicControlChanges(self):       
         vm = self.vb.vms.create(register=True)
 
-        img = self.vb.resources.mediums.floppy.get(FD_IMG)
+        img = self.vb.floppies.get(FD_IMG)
         vm.floppy.attach(img, ensureBootable=True)
 
-        print tuple(el.type for el in vm.nics)
+        
 
         vm.nics[1].type = "hostonly"
         vm.cableConnected = True
@@ -215,13 +215,17 @@ class TestVirtualBox(unittest.TestCase):
         self.assertTrue(vm.cableConnected)
         vm.cableConnected = False
         self.assertFalse(vm.cableConnected)
-        vm.nics[1].type = "intnet"
-        self.assertEqual(vm.nics[1].type, "intnet")
         vm.cableConnected = True
         self.assertTrue(vm.cableConnected)
         vm.cableConnected = False
         self.assertFalse(vm.cableConnected)
 
-        
-        1/0
         vm.destroy()
+
+    def testCloneHdd(self):
+        hdd = self.vb.hdds.create(size=42)
+        hdd2 = hdd.clone()
+        self.assertTrue(hdd.exists())
+        self.assertTrue(hdd2.exists())
+        hdd.destroy()
+        hdd2.destroy()

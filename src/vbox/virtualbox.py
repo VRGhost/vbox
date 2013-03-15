@@ -5,10 +5,10 @@ import threading
 from . import (
     base,
     cli, 
-    hdd,
     info,
     vm,
-    resources,
+    disks,
+    network,
 )
 
 class VirtualBox(base.ElementGroup):
@@ -26,7 +26,9 @@ class VirtualBox(base.ElementGroup):
 
     def getElements(self):
         return {
-            "hdd": hdd.HddLibrary(self),
             "vms": vm.VmLibrary(self),
-            "resources": resources.ResourceLibrary(self)
+            "hdds": disks.HddLibrary(self),
+            "floppies": disks.FloppyLibrary(self),
+            "dvds": disks.DvdLibrary(self),
+            "net": network.NetworkLibrary(self),
         }

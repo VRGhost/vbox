@@ -4,8 +4,7 @@ from .subCmd import (
     CmdError,
     Generic,
     PlainCall,
-    VmCmd,
-    VmPropSetter,
+    ArgCmd,
 )
 
 from . import util
@@ -37,41 +36,56 @@ class CreateVM(Generic):
     flags = ("register", )
     mandatory = ("name", )
 
-class CloneVM(VmCmd):
+class CloneVM(ArgCmd):
 
     changesVmState = False
+
     opts = ("snapshot", "mode", "options", "name",
         "groups", "basefolder", "uuid")
     flags = ("register", )
 
-class UnregisterVM(VmCmd):
+class CloneHd(ArgCmd):
+
+    changesVmState = False
+    nargs = 2
+
+    opts = ("outputfile", "format", "variant",  )
+    flags = ("existing", )
+
+
+class UnregisterVM(ArgCmd):
 
     changesVmState = True
     flags = ("delete", )
 
-class StorageCtl(VmPropSetter):
+class StorageCtl(ArgCmd):
 
+    nargs = 2
+    argnames = (None, "--name")
     changesVmState = True
-    propName = "--name"
+
     opts = ("add", "controller", "sataportcount")
     bools = ("hostiocache", "bootable")
     flags = ("remove")
 
-class StorageAttach(VmPropSetter):
+class StorageAttach(ArgCmd):
 
     changesVmState = True
-    propName = "--storagectl"
+    nargs = 2
+    argnames = (None, "--storagectl")
+    changesVmState = True
+
     opts = ("port", "device", "type", "medium",)
     mandatory = ("type", )
 
 
-class StartVm(VmCmd):
+class StartVm(ArgCmd):
     """Start VM."""
 
     changesVmState = True
     opts = ("type", )
 
-class ControlVm(VmPropSetter):
+class ControlVm(ArgCmd):
 
     changesVmState = True
     def __call__(self, name, action):
