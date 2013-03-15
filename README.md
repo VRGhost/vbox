@@ -8,7 +8,7 @@ Yet another Python library of Python bindings for Virtual Box CLI (Command Line 
 Motivation
 --------
 
-It appears that (VirtualBox)[https://www.virtualbox.org/] binary API is rather unstable, while CLI interface is quite stable. Plus, using CLI interface means that one has to compile bindings library for particular host being used. This can be not as simple as it should be on some systems (e.g. Windows). Binary bindings are also of a concern when packaging ones' program in to the redistributable packages.
+It appears that [VirtualBox](https://www.virtualbox.org/) binary API is rather unstable, while CLI interface is quite stable. Plus, using CLI interface means that one has to compile bindings library for particular host being used. This can be not as simple as it should be on some systems (e.g. Windows). Binary bindings are also of a concern when packaging ones' program in to the redistributable packages.
 
 To the best of my current knowledge, the only competing project worth noting is [pyvb](https://pypi.python.org/pypi/pyvb). But it seems to be rather dead at the moment with last release dating back to the 2008. And its GPL license is sadly not really suitable for my current needs.
 
