@@ -1,7 +1,7 @@
 #!/bin/sh
 
 cd $(dirname "$0")
-./win_test.sh
+./win.sh ./test.sh
 RC=$?
 if [ "${RC}" != "0" ]; then
     echo "Tests failed, aborting."
