@@ -13,7 +13,7 @@ RAW_VERSION=$(python setup.py --version)
 VERSION=${RAW_VERSION//[[:space:]]/}
 TAG="v${VERSION}"
 
-git tag ${TAG} && \
 python setup.py sdist upload && \
 python -c "import setuptools; execfile('setup.py')" bdist_egg upload && \
+git tag ${TAG} && \
 git push origin ${TAG}
