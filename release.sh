@@ -15,4 +15,5 @@ TAG="v${VERSION}"
 
 git tag ${TAG} && \
 python setup.py sdist upload && \
+python -c "import setuptools; execfile('setup.py')" bdist_egg upload && \
 git push origin ${TAG}
