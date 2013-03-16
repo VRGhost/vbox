@@ -1,7 +1,7 @@
 VBox
 =========
 
-License: LGPL/BSD.
+License: BSD.
 
 Yet another Python library of Python bindings for Virtual Box CLI (Command Line Interface).
 
