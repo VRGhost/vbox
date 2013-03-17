@@ -1,7 +1,7 @@
 VBox
 =========
 
-License: BSD.
+License: BSD_.
 
 Yet another Python library of Python bindings for Virtual Box CLI (Command Line Interface).
 
@@ -37,3 +37,4 @@ Sure. That is why I am hosting VBox_ on the GitHub. :-)
 .. _VirtualBox: https://www.virtualbox.org/
 .. _pyvb: https://pypi.python.org/pypi/pyvb
 .. _VBox: https://github.com/VRGhost/vbox
+.. _BSD: http://opensource.org/licenses/BSD-3-Clause
