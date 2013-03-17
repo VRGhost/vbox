@@ -1,6 +1,16 @@
 #!/bin/sh
-
 cd $(dirname "$0")
+
+RST2HTML_ERR="./rst2html_err.tmp"
+{ python setup.py --long-description | python rst2html.py > /dev/null ; } 2>&1 | tee ${RST2HTML_ERR}
+ERR_MSG=$(cat "${RST2HTML_ERR}" )
+rm "${RST2HTML_ERR}"
+
+RC=$?
+if [ \( "${RC}" != "0" \) -o \( -n "${ERR_MSG}" \) ]; then
+    echo "Rst2Html check failed. Aborting"
+    exit ${RC}
+fi
 
 python setup.py register
 RC=$?

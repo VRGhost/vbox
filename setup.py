@@ -25,7 +25,7 @@ def find_packages(path, base="" ):
     return packages
 
 setup(name='vbox',
-    version='0.2.2',
+    version='0.2.3',
     description="VirtualBox CLI bindings",
     long_description=open("README.rst").read(),
 
