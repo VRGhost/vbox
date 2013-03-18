@@ -68,5 +68,10 @@ python setup.py sdist upload && \
 python -c "import setuptools; execfile('setup.py')" bdist_egg upload
 fail_on_nz_rc "Python upload failed."
 
+if [ "$(uname -o)" == "Cygwin" ]; then
+    python setup.py bdist_wininst upload
+    fail_on_nz_rc "Failed to upload bdist_wininst"
+fi
+
 # Revert to original source branch
 git checkout "${SRC_BRANCH}"
