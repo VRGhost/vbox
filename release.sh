@@ -23,7 +23,7 @@ function fail_on_nz_rc {
     fi
 }
 
-if [ -n "$(git status --porcelain 2>/dev/null | grep '^[[:space:]]*M[[:space:]]')" ]; then
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
     git status
     fail_with_rc "There are uncommited changes." "1"
 fi
@@ -52,6 +52,9 @@ TAG="v${VERSION}"
 
 SRC_BRANCH=$(git branch | grep '^*' | cut -f 2 -d ' ')
 TRG_BRANCH="release"
+
+git push
+fail_on_nz_rc "Git push of source branch (${SRC_BRANCH}) failed."
 
 git checkout "${TRG_BRANCH}" && \
 git merge "${SRC_BRANCH}" --squash --message "Releasing ${TAG}."
