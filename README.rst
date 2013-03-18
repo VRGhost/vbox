@@ -1,12 +1,12 @@
 VBox_
-====================
+####################
 
 License: BSD_.
 
 Yet another Python library of Python_ bindings for Virtual Box CLI (Command Line Interface).
 
 Motivation
---------------------
+********************
 
 It appears that VirtualBox_ binary API is rather unstable, while CLI interface is quite
 stable. Plus, using binary interface means that one has to compile bindings library for
@@ -19,7 +19,7 @@ But it seems to be rather dead at the moment with last release dating back to th
 2008. And its GPL license is sadly not really suitable for my current needs.
 
 Features
---------------------
+********************
 
 The main difference of this library of bindings is that I am making "smart" objective
 bindings rather just set of Python functions that call corresponding CLI commands.
@@ -30,15 +30,15 @@ and properties parsed to their corresponding Python objects.  Plus, I am attempt
 to make more consistent interface than VirtualBox_'es CLI is.
 
 Requirements
---------------------
+********************
 
 Just a reasonably recent version of Python_.
 
 How do I use it?
---------------------
+********************
 
 Deployment
-````````````````````
+====================
 
 You should be able to install this project via ``easy_install vbox`` route.
 
@@ -50,12 +50,12 @@ but won't get all the frustration of me accidentally breaking something via
 committing stuff to the ``master`` branch (that is development/testing branch).
 
 API
-````````````````````
+====================
 
 I will write this part eventually. Please refer to the `VBox tests`_ for now.
 
 Can I contribute?
---------------------
+********************
 
 Sure. That is why I am hosting VBox_ on the GitHub. :-)
 
