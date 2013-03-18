@@ -27,7 +27,6 @@ if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
     git status
     fail_with_rc "There are uncommited changes." "1"
 fi
-ecit 42
 
 RST2HTML_ERR="./rst2html_err.tmp"
 { python setup.py --long-description | python rst2html.py > /dev/null ; } 2>&1 | tee ${RST2HTML_ERR}
@@ -66,7 +65,7 @@ git push
 fail_on_nz_rc "Git push failed."
 
 python setup.py sdist upload && \
-python -c "import setuptools; execfile('setup.py')" bdist_egg upload && \
+python -c "import setuptools; execfile('setup.py')" bdist_egg upload
 fail_on_nz_rc "Python upload failed."
 
 # Revert to original source branch
