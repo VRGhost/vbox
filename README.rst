@@ -1,9 +1,9 @@
-VBox
-=========
+VBox_
+===================
 
 License: BSD_.
 
-Yet another Python library of Python bindings for Virtual Box CLI (Command Line Interface).
+Yet another Python library of Python_ bindings for Virtual Box CLI (Command Line Interface).
 
 Motivation
 -------------------
@@ -22,19 +22,30 @@ I am attempting to hide as much of low-level VM management as possible and to re
 Requirements
 -------------------
 
-Just a reasonably recent version of Python.
+Just a reasonably recent version of Python_.
 
 How do I use it?
 -------------------
 
-I will write this part eventually. Please refer to the code tests for now.
+You should be able to install this project via ``easy_install vbox`` route.
+
+Alternatively, you can include this library as `git submodule`_. If you do that, please make sure to include this projects' ``release`` branch, not ``master``. As ``release`` is the one that will contain versions of code that were actually released to the `VBox pypy package page`_, so you will get automoatic code updates than, but won't get all the frustration of me accidently breaking something via commiting stuff to the ``master`` branch (that is developement/testing branch).
+
+API
+```````````````````
+
+I will write this part eventually. Please refer to the `VBox tests`_ for now.
 
 Can I contribute?
 -------------------
 
 Sure. That is why I am hosting VBox_ on the GitHub. :-)
 
-.. _VirtualBox: https://www.virtualbox.org/
-.. _pyvb: https://pypi.python.org/pypi/pyvb
-.. _VBox: https://github.com/VRGhost/vbox
 .. _BSD: http://opensource.org/licenses/BSD-3-Clause
+.. _Python: http://www.python.org/
+.. _pyvb: https://pypi.python.org/pypi/pyvb
+.. _VBox tests: https://github.com/VRGhost/vbox/tree/master/src/tests
+.. _VBox: https://github.com/VRGhost/vbox
+.. _VirtualBox: https://www.virtualbox.org/
+.. git submodule: http://git-scm.com/book/en/Git-Tools-Submodules
+.. VBox pypy package page: https://pypi.python.org/pypi/vbox

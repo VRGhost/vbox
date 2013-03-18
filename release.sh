@@ -1,4 +1,6 @@
 #!/bin/sh
+#
+# Please note that this script assumes that caller has setuptools and docutils installed.
 cd $(dirname "$0")
 
 RST2HTML_ERR="./rst2html_err.tmp"

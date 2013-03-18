@@ -36,7 +36,7 @@ setup(name='vbox',
     package_dir = {'': 'src'},
 
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 3 - Alpha",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: BSD License",
