@@ -38,7 +38,7 @@ How do I use it?
 --------------------
 
 Deployment
-`````````````````````
+````````````````````
 
 You should be able to install this project via ``easy_install vbox`` route.
 
