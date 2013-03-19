@@ -4,10 +4,11 @@ import time
 import datetime
 from collections import defaultdict, OrderedDict
 
-from vbox import util as props
+from vbox.cli import CmdError
+
+from .. import util as props
 
 from . import base, util
-from ..cli import CmdError
 from .storageController import ControllerGroup
 from .nic import NicGroup
 from .state import State

@@ -6,7 +6,7 @@ THIS_DIR=$(readlink -f .)
 START_DIR="$(readlink -f .)/src"
 
 if [ -n "$*" ]; then
-    cd ${START_DIR} && ${THIS_DIR}/run python -m unittest $*
+    cd ${START_DIR}/tests && ${THIS_DIR}/run python -m unittest $*
 else
 
     if [ "$(uname -o)" == "Cygwin" ]; then

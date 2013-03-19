@@ -54,8 +54,13 @@ API
 
 I will write this part eventually. Please refer to the `VBox tests`_ for now.
 
-Can I contribute?
+Contributions
 ********************
+
+Please do feel free to email me your suggestions on how to improve this library. Just email me (address can be found in the ``setup.py`` file or just googled for).
+
+Can I has code?
+====================
 
 Sure. That is why I am hosting VBox_ on the GitHub. :-)
 

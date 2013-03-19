@@ -1,5 +1,14 @@
 #!/bin/sh
 
 THIS_DIR=$(readlink -f $(dirname $0))
-export PYTHONPATH="${THIS_DIR}/src":${PYTHONPATH}
+SRC_DIR="${THIS_DIR}/src"
+PY_PLATFORM=$(python -c "import platform, sys; sys.stdout.write(platform.system())")
+
+if [ \( "$(uname -o)" == "Cygwin" \) -a \( "${PY_PLATFORM}" == "Windows" \) ]; then
+    SRC_DIR=$(cygpath -w "${SRC_DIR}")
+    export PYTHONPATH="${SRC_DIR};${PYTHONPATH}"
+else
+    export PYTHONPATH="${SRC_DIR}":${PYTHONPATH}
+fi
+
 $*

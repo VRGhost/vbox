@@ -4,7 +4,10 @@ class Base(object):
     """Base class for API objects."""
 
     kwargName = None
+    initOrder = () # Order at which kwargs are going to be applied
     expectedKwargs = None # Replace with dict in child classes!
+    defaultKwargs = None
+    boundKwargs = None
 
     def __init__(self, *args, **kwargs):
         super(Base, self).__init__()
@@ -16,27 +19,68 @@ class Base(object):
         for el in args:
             self._constructKwargs(realKwargs, el)
 
-        realKwargs = dict((name, tuple(value)) for (name, value) in realKwargs.iteritems())
+        boundKwargs = dict((name, tuple(value)) for (name, value) in realKwargs.iteritems())
         # Ensure that all kwargs mentioned in the `expectedKwargs`
         # are actually initialised in `realKwargs`
         for name in self.expectedKwargs.keys():
-            realKwargs[name]  = ()
+            if name not in boundKwargs:
+                boundKwargs[name]  = ()
 
-        self._verifyKwargs(realKwargs)
-        self._initObject(realKwargs)
+        self._verifyKwargs(boundKwargs)
+        self._setup(boundKwargs)
+        self.boundKwargs = boundKwargs
+        self._init()
 
-    def _initObject(self, kwargs):
+    def _setup(self, kwargs):
         """Actual object-dependant kwarg handler."""
         # Children classes should override this function for custom functionality
-        for (name, value) in kwargs.iteritems():
+        kwargOrder = list(self.initOrder)
+        extraNames = [name for name in kwargs.iterkeys() if name not in kwargOrder]
+        # Unmentioned kwarg names are to be initialised last.
+        kwargOrder.extend(extraNames)
+
+        for name in kwargOrder:
+            value = kwargs[name]
             isOk = self._getAllowedFn(name)
             if (len(value) <= 1) and (not isOk(2)):
                 # Assume that this is single object
                 if len(value) == 1:
                     value = value[0]
                 else:
-                    value = None
-            setattr(self, name, value)
+                    try:
+                        valueCb = self.defaultKwargs[name]
+                    except:
+                        raise KeyError("Unable to find default value for {!r}".format(name))
+                
+                    if valueCb is None:
+                        # Do not init given property at all
+                        continue
+                    value = valueCb()
+            self.setProp(name, value)
+            self._registerAsParent(value)
+
+    def setProp(self, name, value):
+        setattr(self, name, value)
+
+    def _registerAsParent(self, child):
+        def _setParentCb(obj):
+            try:
+                cb = obj.setParent
+            except AttributeError:
+                pass
+            else:
+                cb(self)
+
+        if  isinstance(child, tuple):
+            it = child
+        else:
+            it = (child, )
+
+        for el in it:
+            _setParentCb(el)
+
+    def _init(self):
+        """Custom initialisation function."""
 
 
     def _verifyKwargs(self, obj):
@@ -52,7 +96,13 @@ class Base(object):
             rv = lambda lstLen: False
 
         if not callable(rv):
-            rv = lambda lstLen: lstLen == rv
+            def _mkBoundFn(cnt):
+                if isinstance(cnt, (list, tuple)):
+                    rv = lambda lstLen: lstLen in cnt
+                else:
+                    rv = lambda lstLen: lstLen == cnt
+                return rv
+            rv = _mkBoundFn(rv)
         return rv
 
 
@@ -66,11 +116,46 @@ class Base(object):
             # Not a container type
             if not name:
                 name = obj.kwargName
-
+            assert isinstance(name, basestring), name
             out[name].append(obj)
 
-# Predefined library of common parameter validators.
-expects = object()
-expects.__dict__.update({
-    "any" : lambda len: True,
-})
+    def __repr__(self):
+        out = []
+        for name in self.expectedKwargs.keys():
+            try:
+                val = getattr(self, name)
+            except AttributeError:
+                val = "!NO ARG!"
+            out.append("{}={!r}".format(name, val))
+        return "<{} {!r} {}>".format(self.__class__.__name__, self.kwargName, " ".join(out))
+
+class Child(Base):
+
+    _parent = _kwargStore = None
+    parent = property(lambda s: s._parent)
+    pyVm = property(lambda s: s.parent.pyVm)
+    pyVb = property(lambda s: s.parent.pyVb)
+
+    def setParent(self, parent):
+        if self._parent is not None:
+            raise Exception("Parent already set")
+        self._parent = parent
+        # Re-call setup to apply actual changes.
+        self._setup(self.boundKwargs)
+
+    def _setup(self, kwargs):
+        if self._relationshipsConfigured():
+            self.befoureSetup(kwargs)
+            super(Child, self)._setup(kwargs)
+            self.afterSetup(kwargs)
+
+    def befoureSetup(self, kwargs):
+        pass
+
+    def afterSetup(self, kwargs):
+        pass
+
+    def _relationshipsConfigured(self):
+        """Return `True` if this object can reach all essential API functions."""
+        return (self._parent is not None) and (self.pyVm is not None)
+

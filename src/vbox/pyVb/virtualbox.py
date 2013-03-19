@@ -2,9 +2,10 @@ import os
 import re
 import threading
 
+from vbox import cli
+
 from . import (
     base,
-    cli, 
     info,
     vm,
     disks,

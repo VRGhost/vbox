@@ -4,4 +4,4 @@ from .vm import VM
 from .general import General
 from .system import System
 from .display import Display
-from .storage import Storage
+from .storage import Storage, HDD, DVD

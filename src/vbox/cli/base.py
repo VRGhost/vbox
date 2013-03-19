@@ -4,7 +4,7 @@ import os
 import subprocess
 import weakref
 
-from .. import base
+from ..pyVb import base
 from .popen import Popen
 
 VirtualBoxElement = base.VirtualBoxElement

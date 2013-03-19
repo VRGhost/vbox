@@ -1,5 +1,5 @@
 from . import base
-from vbox import util
+from .. import util
 
 class NIC(base.VirtualBoxObject):
 
