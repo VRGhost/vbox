@@ -1,4 +1,5 @@
 import unittest
+import time
 
 from vbox import api
 
@@ -19,12 +20,10 @@ class TestExtApi(unittest.TestCase):
             ),
             api.Storage(
                 api.HDD(size=10*1024),
-                api.DVD(
-                    target=r"C:\Users\e102308\Documents\ISOs\CentOS-6.3-x86_64-bin-DVD1.iso"
-                ),
+                api.DVD(),
+                api.FDD(),
             )
         )
-        vm.system.memory *= 2
-        print vm.system.memory
-        print vm.storage.dvd
-        self.assertGreater(vm.system.memory, 0)
+        vm.start()
+        vm.wait(2)
+        vm.powerOff()

@@ -23,6 +23,10 @@ class VM(base.Base):
     }
     pyVb = pyVm = None
 
+    start = property(lambda s: s.pyVm.start)
+    wait = property(lambda s: s.pyVm.wait)
+    powerOff = property(lambda s: s.pyVm.powerOff)
+
     def general():
         doc = "The 'general' property. It updates actual pyVb vm object bound to this API entity"
         def fget(self):

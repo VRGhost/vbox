@@ -27,9 +27,31 @@ class Base(object):
                 boundKwargs[name]  = ()
 
         self._verifyKwargs(boundKwargs)
+        boundKwargs = self._flatternLayout(boundKwargs)
         self._setup(boundKwargs)
         self.boundKwargs = boundKwargs
         self._init()
+
+    def _flatternLayout(self, kwargs):
+        out = {}
+        for (key, value) in kwargs.iteritems():
+            isOk = self._getAllowedFn(key)
+            if (len(value) <= 1) and (not isOk(2)):
+                # Assume that this is single object
+                if len(value) == 1:
+                    value = value[0]
+                else:
+                    try:
+                        valueCb = self.defaultKwargs[key]
+                    except KeyError:
+                        raise KeyError("Unable to find default value for {!r}".format(key))
+                
+                    if valueCb is None:
+                        # Do not init given property at all
+                        continue
+                    value = valueCb()
+            out[key] = value
+        return out
 
     def _setup(self, kwargs):
         """Actual object-dependant kwarg handler."""
@@ -41,21 +63,6 @@ class Base(object):
 
         for name in kwargOrder:
             value = kwargs[name]
-            isOk = self._getAllowedFn(name)
-            if (len(value) <= 1) and (not isOk(2)):
-                # Assume that this is single object
-                if len(value) == 1:
-                    value = value[0]
-                else:
-                    try:
-                        valueCb = self.defaultKwargs[name]
-                    except:
-                        raise KeyError("Unable to find default value for {!r}".format(name))
-                
-                    if valueCb is None:
-                        # Do not init given property at all
-                        continue
-                    value = valueCb()
             self.setProp(name, value)
             self._registerAsParent(value)
 
