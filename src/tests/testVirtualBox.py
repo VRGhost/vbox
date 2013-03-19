@@ -8,9 +8,9 @@ FD_IMG=os.path.realpath(os.path.join(os.path.dirname(__file__), "fd.img"))
 class TestVirtualBox(unittest.TestCase):
 
     def setUp(self):
-        import vbox
+        import vbox.pyVb
         logging.basicConfig(level=logging.DEBUG)
-        self.vb = vbox.VirtualBox()
+        self.vb = vbox.pyVb.VirtualBox()
 
     def testListAll(self):
         listAll = self.vb.cli.manage.list.all()
