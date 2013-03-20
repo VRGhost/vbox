@@ -73,9 +73,24 @@ with the following command:
     )
 
 
+^^^^^^^^^^^^^^^^^^^^
 VM with 10gb HDD and an empty DVD drive
 ^^^^^^^^^^^^^^^^^^^^
 
+::
+
+    import vbox
+
+    vm = vbox.VM(
+        vbox.General(
+            name="foo",
+            osType="Windows95",
+        ),
+        vbox.Storage(
+            api.HDD(size=10*1024),
+            api.DVD(),
+        ),
+    )
 
 
 Contributions
