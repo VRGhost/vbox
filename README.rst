@@ -73,7 +73,7 @@ with the following command:
     )
 
 
-** VM with 10gb HDD and an empty DVD drive **
+**VM with 10gb HDD and an empty DVD drive**
 
 
 ::
