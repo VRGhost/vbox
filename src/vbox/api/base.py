@@ -41,10 +41,7 @@ class Base(object):
                 if len(value) == 1:
                     value = value[0]
                 else:
-                    try:
-                        valueCb = self.defaultKwargs[key]
-                    except KeyError:
-                        raise KeyError("Unable to find default value for {!r}".format(key))
+                    valueCb = self.defaultKwargs.get(key)
                 
                     if valueCb is None:
                         # Do not init given property at all
@@ -166,3 +163,10 @@ class Child(Base):
         """Return `True` if this object can reach all essential API functions."""
         return (self._parent is not None) and (self.pyVm is not None)
 
+def pyVmProp(name):
+    """Bound property of pyVm."""
+    def pyVmProp_fset(self, value):
+        setattr(self.pyVm, name, value)
+    def pyVmProp_fget(self):
+        return getattr(self.pyVm, name)
+    return property(pyVmProp_fget, pyVmProp_fset)

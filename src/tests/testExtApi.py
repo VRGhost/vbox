@@ -18,6 +18,10 @@ class TestExtApi(unittest.TestCase):
             api.System(
                 memory=12,
             ),
+            api.Display(
+                accelerate3d=False,
+                memory=12,
+            ),
             api.Storage(
                 api.HDD(size=10*1024),
                 api.DVD(),
@@ -26,4 +30,47 @@ class TestExtApi(unittest.TestCase):
         )
         vm.start()
         vm.wait(2)
+        vm.powerOff()
+
+    def testMultiCpuVm(self):
+        vm = api.VM(
+            api.General(
+                name="foo",
+                osType="Windows95",
+            ),
+            api.System(
+                api.CPU(count=2, executionCap=70, pae=True),
+                memory=12,
+            ),
+            api.Display(
+                accelerate3d=False,
+                memory=12,
+            ),
+            api.Storage(
+                api.HDD(size=10*1024),
+                api.DVD(),
+                api.FDD(),
+            )
+        )
+        vm.start()
+        vm.wait(1)
+        vm.powerOff()
+
+    def testFullSytemConfig(self):
+        vm = api.VM(
+            api.General(
+                name="foo",
+                osType="Windows95",
+            ),
+            api.System(
+                api.CPU(count=3, executionCap=70, pae=False),
+                memory=12,
+                hwVirtualisation=True,
+                nestedPaging=False,
+                ioapic=True,
+            ),
+            api.Storage(),
+        )
+        vm.start()
+        vm.wait(1)
         vm.powerOff()

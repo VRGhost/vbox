@@ -23,11 +23,19 @@ class VM(base.VirtualBoxEntity):
 
     baloon = props.Int(
         "guestmemoryballoon", extraCb=util.controlCb("guestmemoryballoon"))
+    cpuCount = props.Int("cpus")
+    cpuExecutionCap = props.Int("cpuexecutioncap")
     memory = props.Int("memory")
     videoMemory = props.Int("vram")
+
+    cpuHotplug = props.Switch("cpuhotplug")
     acpi = props.Switch("acpi")
     ioapic = props.Switch("ioapic")
-    pae = props.Switch("ioapic")
+    pae = props.Switch("pae")
+    accelerate3d = props.Switch("accelerate3d")
+
+    enableHwVirt = props.Switch("hwvirtex")
+    nestedPaging = props.Switch("nestedpaging")
 
     registered = property(lambda s: s in s.vb.vms.list())
 
