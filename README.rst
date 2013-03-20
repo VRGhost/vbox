@@ -91,6 +91,12 @@ with the following command:
         ),
     )
 
+**VM object API**
+
+#. ``vm.start()``
+#. ``vm.powerOff()``
+#. ``vm.wait(timeout=None)`` -- wait for machine to get from ``running`` state to some other state.
+
 
 Contributions
 ********************
