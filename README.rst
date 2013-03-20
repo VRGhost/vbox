@@ -53,13 +53,47 @@ API
 ====================
 
 I will write this part eventually. Please refer to the `VBox tests`_ for now.
+
+Creating VM
+********************
+
+VM with no drives and default amounts of RAM for the selected OS type is created
+with the following command:
+
 ::
-    Code test block
-    asdasd
+    import vbox
 
-    asdasd
+    vm = vbox.VM(
+        vbox.General(
+            name="foo",
+            osType="Windows95",
+        ),
+        vbox.Storage(),
+    )
 
-asdasd
+VM with 10gb HDD and an empty DVD drive
+^^^^^^^^^^^^^^^^^^^^
+
+::
+    import vbox
+
+    vm = vbox.VM(
+        vbox.General(
+            name="foo",
+            osType="Windows95",
+        ),
+        vbox.Storage(
+            api.HDD(size=10*1024),
+            api.DVD(),
+        ),
+    )
+
+VM object API
+^^^^^^^^^^^^^^^^^^^^
+
+#. ``vm.start()``
+#. ``vm.powerOff()``
+#. ``vm.wait(timeout=None)`` -- wait for machine to get from ``running`` state to some other state.
 
 Contributions
 ********************
