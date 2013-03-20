@@ -72,7 +72,30 @@ with the following command:
         vbox.Storage(),
     )
 
+VM with 10gb HDD and an empty DVD drive
+^^^^^^^^^^^^^^^^^^^^
 
+::
+
+    import vbox
+
+    vm = vbox.VM(
+        vbox.General(
+            name="foo",
+            osType="Windows95",
+        ),
+        vbox.Storage(
+            api.HDD(size=10*1024),
+            api.DVD(),
+        ),
+    )
+
+VM object API
+^^^^^^^^^^^^^^^^^^^^
+
+#. ``vm.start()``
+#. ``vm.powerOff()``
+#. ``vm.wait(timeout=None)`` -- wait for machine to get from ``running`` state to some other state.
 
 Contributions
 ********************
