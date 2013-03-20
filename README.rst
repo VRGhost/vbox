@@ -57,6 +57,9 @@ I will write this part eventually. Please refer to the `VBox tests`_ for now.
 Creating VM
 ********************
 
+asfdasd
+++++++++++++++++++++
+
 VM with no drives and default amounts of RAM for the selected OS type is created
 with the following command:
 
