@@ -53,6 +53,13 @@ API
 ====================
 
 I will write this part eventually. Please refer to the `VBox tests`_ for now.
+::
+    Code test block
+    asdasd
+
+    asdasd
+
+asdasd
 
 Contributions
 ********************
