@@ -77,7 +77,7 @@ with the following command:
 
 
 VM with 10gb HDD and an empty DVD drive
-++++++++++++++++++++
+
 
 ::
 
