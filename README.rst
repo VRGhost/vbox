@@ -60,7 +60,7 @@ Creating VM
 VM with no drives and default amounts of RAM for the selected OS type is created
 with the following command:
 
-::
+2::
     import vbox
 
     vm = vbox.VM(
@@ -74,7 +74,7 @@ with the following command:
 VM with 10gb HDD and an empty DVD drive
 ^^^^^^^^^^^^^^^^^^^^
 
-::
+2::
     import vbox
 
     vm = vbox.VM(
