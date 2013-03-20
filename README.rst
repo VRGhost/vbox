@@ -93,9 +93,6 @@ VM with 10gb HDD and an empty DVD drive
 VM object API
 ^^^^^^^^^^^^^^^^^^^^
 
-#. ``vm.start()``
-#. ``vm.powerOff()``
-#. ``vm.wait(timeout=None)`` -- wait for machine to get from ``running`` state to some other state.
 
 Contributions
 ********************
