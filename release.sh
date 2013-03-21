@@ -56,7 +56,8 @@ git push
 fail_on_nz_rc "Git push of source branch (${SRC_BRANCH}) failed."
 
 git checkout "${TRG_BRANCH}" && \
-git merge "${SRC_BRANCH}" --squash --message "Releasing ${TAG}."
+git merge "${SRC_BRANCH}" --squash --message "Releasing ${TAG}." && \
+git commit --message "Releasing ${TAG}."
 fail_on_nz_rc "Git merge failed."
 
 git tag ${TAG} && \
