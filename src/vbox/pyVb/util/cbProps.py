@@ -65,3 +65,6 @@ class Int(Prop):
 
     def fromCli(self, val):
         return int(val)
+
+    def toCli(self, val):
+        return int(val)

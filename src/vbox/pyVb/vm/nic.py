@@ -1,7 +1,7 @@
 """Network interface card support."""
 import re
 
-from vbox import util as props
+from .. import util as props
 
 from . import base, util
 

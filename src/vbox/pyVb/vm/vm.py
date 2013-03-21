@@ -4,10 +4,11 @@ import time
 import datetime
 from collections import defaultdict, OrderedDict
 
-from vbox import util as props
+from vbox.cli import CmdError
+
+from .. import util as props
 
 from . import base, util
-from ..cli import CmdError
 from .storageController import ControllerGroup
 from .nic import NicGroup
 from .state import State
@@ -22,11 +23,19 @@ class VM(base.VirtualBoxEntity):
 
     baloon = props.Int(
         "guestmemoryballoon", extraCb=util.controlCb("guestmemoryballoon"))
+    cpuCount = props.Int("cpus")
+    cpuExecutionCap = props.Int("cpuexecutioncap")
     memory = props.Int("memory")
     videoMemory = props.Int("vram")
+
+    cpuHotplug = props.Switch("cpuhotplug")
     acpi = props.Switch("acpi")
     ioapic = props.Switch("ioapic")
-    pae = props.Switch("ioapic")
+    pae = props.Switch("pae")
+    accelerate3d = props.Switch("accelerate3d")
+
+    enableHwVirt = props.Switch("hwvirtex")
+    nestedPaging = props.Switch("nestedpaging")
 
     registered = property(lambda s: s in s.vb.vms.list())
 

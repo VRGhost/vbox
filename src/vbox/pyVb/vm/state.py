@@ -14,7 +14,8 @@ class State(object):
     start = lambda s, *a, **kw: s.vm.start(*a, **kw)
 
     knownStates = (
-        "running", "paused", "poweroff"
+        "running", "paused", "poweroff",
+        "aborted",
     )
 
     def __init__(self, vm):

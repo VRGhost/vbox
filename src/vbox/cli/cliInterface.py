@@ -1,6 +1,6 @@
 import threading
 
-from .. import base
+from ..pyVb import base
 
 from .vboxManage import VBoxManage
 

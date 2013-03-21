@@ -35,7 +35,7 @@ class HddLibrary(base.VirtualBoxEntityType):
         nameGen = self._nameGen(filename, autoname)
 
         createhd = lambda fname: self.vb.cli.manage.createhd(
-            filename=fname, size=size, format=format, variant=variant)
+            filename=fname, size=int(size), format=format, variant=variant)
         hddExistsMsgs = (
             "cannot register the hard disk",
             "(VERR_ALREADY_EXISTS)".lower(),

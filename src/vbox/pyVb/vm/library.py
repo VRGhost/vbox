@@ -1,5 +1,7 @@
 import re
 
+from vbox.cli import CmdError
+
 from . import (
     base,
     vm,
@@ -21,7 +23,9 @@ class VmLibrary(base.VirtualBoxEntityType):
             yield name
 
         if not autoname:
-                raise Exception("Virtual machine {!r} already exists.".format(name))
+            yield None
+            raise Exception("Virtual machine {!r} already exists.".format(name))
+
         idx = 1
         genName = lambda: "{} ({})".format(name, idx)
         while genName() in existing:
@@ -43,12 +47,20 @@ class VmLibrary(base.VirtualBoxEntityType):
             kwargs["ostype"] = found.id            
 
         nameGen = self._nameGen(name, autoname)
+        oldError = None
         while True:
-            kwargs["name"] = nameGen.next()
+            kwargs["name"] = newName = nameGen.next()
+            if newName is None:
+                # An exaustion notification from name generator
+                if oldError:
+                    raise oldError
+                else:
+                    raise Exception("Can not generate name for the new machine.")
             try:
                 out = self.vb.cli.manage.createvm(**kwargs)
-            except cli.CmdError as err:
+            except CmdError as err:
                 if "already exists" in err.output.lower():
+                    oldError = err
                     continue
                 else:
                     raise

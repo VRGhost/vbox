@@ -1,5 +1,4 @@
-from .. import base
-from vbox import util
+from .. import base, util
 
 ElementGroup = base.ElementGroup
 VirtualBoxEntityType = base.VirtualBoxEntityType
