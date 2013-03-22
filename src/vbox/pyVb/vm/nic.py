@@ -50,12 +50,12 @@ class NIC(base.VirtualMachinePart):
                 else:
                     lib = None
 
+                adapter = None
                 if lib:
                     for el in lib.list():
                         adapter = el
                         break
-                    else:
-                        adapter = None
+                        
 
                 if adapter:
                     self.networkAdapter = adapter

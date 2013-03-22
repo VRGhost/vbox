@@ -115,7 +115,6 @@ class Removable(Medium):
             trg = kwargs["target"]
             slot = self._getController().attach(self._paramToPyObj(trg))
             myImage = self._getController().getMedia(slot)
-            print "myImage:", myImage
         self._pyImage = myImage
 
     def target():
@@ -133,7 +132,6 @@ class Removable(Medium):
                 return
             assert oldImg
             controller = self._getController()
-            print "oldImg:", oldImg
             mySlot = controller.findSlotOf(oldImg)
             assert mySlot, mySlot
             controller.attach(img, slot=mySlot)

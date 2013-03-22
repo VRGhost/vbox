@@ -60,7 +60,6 @@ class StorageController(base.VirtualMachinePart):
 
     def findSlotOf(self, image):
         for (addr, media) in self.iterMedia():
-            print media, image
             if media == image:
                 return addr
         return None

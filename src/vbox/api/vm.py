@@ -4,6 +4,7 @@ from . import (
     base,
     system,
     display,
+    network,
 )
 
 
@@ -16,16 +17,19 @@ class VM(base.Base):
         "system": (0, 1),
         "display": (0, 1),
         "storage": 1,
+        "network": (0, 1),
     }
     defaultKwargs = {
         "system": system.System,
         "display": display.Display,
+        "network": network.Network,
     }
     pyVb = pyVm = None
 
-    start = property(lambda s: s.pyVm.start)
-    wait = property(lambda s: s.pyVm.wait)
-    powerOff = property(lambda s: s.pyVm.powerOff)
+    start = base.pyVmProp("start")
+    wait = base.pyVmProp("wait")
+    powerOff = base.pyVmProp("powerOff")
+    destroy = base.pyVmProp("destroy")
 
     def general():
         doc = "The 'general' property. It updates actual pyVb vm object bound to this API entity"

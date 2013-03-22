@@ -13,6 +13,9 @@ class State(object):
     powerOff = lambda s, *a, **kw: s.vm.powerOff(*a, **kw)
     start = lambda s, *a, **kw: s.vm.start(*a, **kw)
 
+    # Mutable state is when hardware parameters of VM can be changed.
+    mutable = property(lambda s: s.val in ("poweroff", "aborted"))
+
     knownStates = (
         "running", "paused", "poweroff",
         "aborted", "stopping",

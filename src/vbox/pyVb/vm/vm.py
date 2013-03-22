@@ -102,11 +102,11 @@ class VM(base.VirtualBoxEntity):
         else:
             timeOk = lambda: True
 
-        while self.state.running and timeOk():
-            time.sleep(0.1)
+        while (not self.state.mutable) and timeOk():
+            time.sleep(0.2)
             self.updateInfo(True)
 
-        return (not self.state.running)
+        return self.state.mutable
 
     def powerOff(self, blocking=True):
         if not self.state.running:
