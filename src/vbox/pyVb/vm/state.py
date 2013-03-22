@@ -15,7 +15,7 @@ class State(object):
 
     knownStates = (
         "running", "paused", "poweroff",
-        "aborted",
+        "aborted", "stopping",
     )
 
     def __init__(self, vm):

@@ -113,14 +113,14 @@ class Removable(Medium):
         myImage = self._findMedia()
         if myImage is None:
             trg = kwargs["target"]
-            myImage = self._paramToPyObj(trg)
-            self._getController().attach(myImage)
+            slot = self._getController().attach(self._paramToPyObj(trg))
+            myImage = self._getController().getMedia(slot)
+            print "myImage:", myImage
         self._pyImage = myImage
 
     def target():
         doc = "The target property."
         def fget(self):
-            print self._pyImage
             if self._pyImage:
                 rv = self._pyImage.fname
             else:
@@ -133,11 +133,11 @@ class Removable(Medium):
                 return
             assert oldImg
             controller = self._getController()
+            print "oldImg:", oldImg
             mySlot = controller.findSlotOf(oldImg)
+            assert mySlot, mySlot
             controller.attach(img, slot=mySlot)
             self._pyImage = img
-        def fdel(self):
-            del self._target
         return locals()
     target = property(**target())
 
@@ -150,7 +150,7 @@ class DVD(Removable):
 
     def _paramToPyObj(self, param):
         if param:
-            img = self.pyVb.dvds.get(value)
+            img = self.pyVb.dvds.get(param)
         else:
             img = self.pyVb.dvds.empty
         return img
@@ -164,7 +164,7 @@ class FDD(Removable):
 
     def _paramToPyObj(self, param):
         if param:
-            img = self.pyVb.floppies.get(value)
+            img = self.pyVb.floppies.get(param)
         else:
             img = self.pyVb.floppies.empty
         return img

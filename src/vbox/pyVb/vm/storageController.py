@@ -51,23 +51,23 @@ class StorageController(base.VirtualMachinePart):
         return slot
 
     def findEmptySlot(self, ensureMaster=False):
-        for (dev, port) in self.iterSlots():
-            if not self.getMedia(dev, port):
+        for slot in self.iterSlots():
+            if not self.getMedia(slot):
                 if ensureMaster and (port != 0):
                     continue
                     
-                return (dev, port)
+                return slot
 
     def findSlotOf(self, image):
         for (addr, media) in self.iterMedia():
+            print media, image
             if media == image:
                 return addr
         return None
 
-    def getMedia(self, device, port):
-        target = (device, port)
+    def getMedia(self, slot):
         for (addr, value) in self.iterMediaInfo():
-            if addr == target:
+            if addr == slot:
                 return self._convertMediaVal(value)
         return None
 

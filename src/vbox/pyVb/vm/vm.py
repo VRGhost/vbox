@@ -104,6 +104,7 @@ class VM(base.VirtualBoxEntity):
 
         while self.state.running and timeOk():
             time.sleep(0.1)
+            self.updateInfo(True)
 
         return (not self.state.running)
 

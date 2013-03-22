@@ -2,8 +2,6 @@ from .. import base
 
 class Dvd(base.RemovableMedium):
 
-    fname = property(lambda s: s.info["Location"])
-
     def getVmAttachType(self):
         return "dvddrive"
 
