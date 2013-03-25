@@ -1,5 +1,5 @@
 
-from . import chgCmds, infoCmds, base
+from . import chgCmds, infoCmds, extraData, base
 from .list import List
 
 class VBoxManage(base.CliVirtualBoxElement):
@@ -25,6 +25,8 @@ class VBoxManage(base.CliVirtualBoxElement):
             "modifyvm": chgCmds.ModifyVm(_cli),
             "clonevm": chgCmds.CloneVM(_cli),
             "clonehd": chgCmds.CloneHd(_cli),
+            "getextradata": extraData.GetExtraData(_cli),
+            "setextradata": extraData.SetExtraData(_cli),
         }
 
         for (name, obj) in _parts.iteritems():

@@ -1,5 +1,6 @@
 from .. import base
 
+InfoKeeper = base.InfoKeeper
 VirtualBoxEntity = base.VirtualBoxEntity
 VirtualBoxEntityType = base.VirtualBoxEntityType
 

@@ -12,6 +12,7 @@ from . import base, util
 from .storageController import ControllerGroup
 from .nic import NicGroup
 from .state import State
+from .extraData import ExtraData
 
 class VM(base.VirtualBoxEntity):
     
@@ -52,6 +53,8 @@ class VM(base.VirtualBoxEntity):
         self.state = State(self)
         self.controllers = ControllerGroup(self)
         self.nics = NicGroup(self)
+        self.extraData = ExtraData(self)
+
         self.cli.addPostCmdExecListener(self._onExecCmd)
 
     def destroy(self, complete=True):

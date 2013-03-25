@@ -2,11 +2,12 @@ from vbox import pyVb
 
 from . import (
     base,
-    system,
     display,
     network,
+    system,
 )
 
+from extraData import ExtraData
 
 class VM(base.Base):
 
@@ -31,6 +32,8 @@ class VM(base.Base):
     powerOff = base.pyVmProp("powerOff")
     destroy = base.pyVmProp("destroy")
 
+    meta = None
+
     def general():
         doc = "The 'general' property. It updates actual pyVb vm object bound to this API entity"
         def fget(self):
@@ -50,5 +53,13 @@ class VM(base.Base):
     general = property(**general())
 
     def __init__(self, *args, **kwargs):
+        # The `pyVb` object has to be declared prior the __init__ call,
+        # as __init__ relies on the ability to access virtualbox object.
+        #
+        # However, I do beleive that initialising object in such manner is a bad style
+        # and should be avoided whenever possible. Thus, I will perform post-super
+        # initialisation whenever possible.
         self.pyVb = pyVb.VirtualBox()
         super(VM, self).__init__(*args, **kwargs)
+
+        self.meta = ExtraData(self)
