@@ -40,9 +40,11 @@ class VM(base.VirtualBoxEntity):
 
     registered = property(lambda s: s in s.vb.vms.list())
 
+    groups = props.Tuple("groups", sep=',')
+
     name = property(lambda s: s.getProp("name"))
     idProps = ("name", "UUID", "_initId")
-    ostype = property(lambda s: s.vb.info.ostypes.find(s.getProp("ostype")).id)
+    osType = property(lambda s: s.vb.info.ostypes.find(s.getProp("ostype")).id)
     changeTime = property(lambda s: datetime.datetime.strptime(
         s.getProp("VMStateChangeTime")[:-3], "%Y-%m-%dT%H:%M:%S.%f"))
 
@@ -116,6 +118,18 @@ class VM(base.VirtualBoxEntity):
             return
 
         self.cli.manage.controlvm.poweroff(self.name)
+
+        if blocking:
+            for _att in self._loopySleep(lambda: not self.state.running):
+                self.updateInfo(True)
+        # virtualbox sometimes is not fast enough to terminate VM process
+        # so do a bit of waiting anyway.
+        time.sleep(0.5)
+
+    def suspend(self, blocking=True):
+        if not self.state.running:
+            return
+        self.cli.manage.controlvm.savestate(self.name)
 
         if blocking:
             for _att in self._loopySleep(lambda: not self.state.running):
@@ -207,7 +221,8 @@ class VM(base.VirtualBoxEntity):
         for (name, value) in props.iteritems():
             modifyVmCmd.extend(("--" + name, value))
 
-        self.cli.manage.modifyvm(self.id, *modifyVmCmd)
+        if modifyVmCmd:
+            self.cli.manage.modifyvm(self.id, *modifyVmCmd)
 
     def control(self, props, quiet=False):
         if not self.state.running:

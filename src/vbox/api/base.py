@@ -111,11 +111,25 @@ class Base(object):
 
 
     def _constructKwargs(self, out, obj, name=None):
-        isContainer = lambda el: isinstance(el, (list, tuple))
+        isContainer = lambda el: isinstance(el, (list, tuple, set, frozenset))
 
         if isContainer(obj):
             for el in obj:
-                self._constructKwargs(out, el, name)
+                tmpOut = defaultdict(list)
+                self._constructKwargs(tmpOut, el, "unnamed")
+
+                unnamed = tmpOut.pop("unnamed", None)
+                if unnamed:
+                    assert name, "Name has to be set."
+                    if isContainer(el):
+                        out[name].append(unnamed)
+                    else:
+                        out[name].extend(unnamed)
+
+                for (elName, vals) in tmpOut.iteritems():
+                    out[elName].extend(vals)
+
+
         else:
             # Not a container type
             if not name:
@@ -139,6 +153,7 @@ class Child(Base):
     parent = property(lambda s: s._parent)
     pyVm = property(lambda s: s.parent.pyVm)
     pyVb = property(lambda s: s.parent.pyVb)
+    vm = property(lambda s: s.parent.vm)
 
     def setParent(self, parent):
         if self._parent is not None:

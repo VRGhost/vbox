@@ -1,3 +1,4 @@
+import os
 import re
 
 from vbox.cli import CmdError
@@ -44,7 +45,12 @@ class VmLibrary(base.VirtualBoxEntityType):
             found = self.vb.info.ostypes.find(ostype)
             if not found:
                 raise Exception("OS type {!r} not found".format(ostype))
-            kwargs["ostype"] = found.id            
+            kwargs["ostype"] = found.id
+
+        if kwargs["basefolder"]:
+            dirname = kwargs["basefolder"]
+            if not os.path.isdir(dirname):
+                raise Exception("Base folder {!r} is not a directory.".format(dirname))
 
         nameGen = self._nameGen(name, autoname)
         oldError = None

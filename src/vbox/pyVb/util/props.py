@@ -3,5 +3,5 @@
 from .boundProperty import boundProperty
 from .infoed import infoed
 from .cbProps import (
-    String, Switch, Int
+    String, Switch, Int, Tuple
 )

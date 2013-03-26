@@ -7,7 +7,7 @@ class ExtraData(base.VmElement):
     def setProp(self, name, value):
         if self.info:
             try:
-                isNotSame = (self.info[name] == value)
+                isNotSame = (self.info[name] != value)
             except KeyError:
                 isNotSame = True
         else:

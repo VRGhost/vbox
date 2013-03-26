@@ -1,4 +1,5 @@
 import itertools
+import os
 
 from . import base
 
@@ -72,11 +73,28 @@ class HDD(Medium):
             createKw = {
                 "size": kwargs["size"],
             }
-            if "name" in kwargs:
-                createKw.update({
-                    "autoname": False,
-                    "filename": kwargs["name"],
-                })
+
+            fname = kwargs.get("name")
+            rootDir = self.vm.general.directory
+            if rootDir and fname:
+                fname = os.path.join(rootDir, fname)
+                autoName = False
+            elif rootDir and (not fname):
+                fname = os.path.join(rootDir, "unnamed_disk")
+                autoName = True
+            elif fname and (not rootDir):
+                # fname = fname
+                autoName = False
+            else:
+                assert fname is None
+                assert rootDir is None
+                autoName = True
+
+            createKw.update({
+                "autoname": autoName,
+                "filename": fname
+            })
+
             myImage = self.pyVb.hdds.create(**createKw)
             self._getController().attach(myImage)
 

@@ -68,3 +68,16 @@ class Int(Prop):
 
     def toCli(self, val):
         return int(val)
+
+class Tuple(Prop):
+
+    def __init__(self, name, sep, *args, **kwargs):
+        super(Tuple, self).__init__(name, *args, **kwargs)
+        self.sep = sep
+
+    def fromCli(self, val):
+        out = (el.strip() for el in val.split(self.sep))
+        return tuple(el for el in out if el)
+
+    def toCli(self, val):
+        return self.sep.join(str(el) for el in val)

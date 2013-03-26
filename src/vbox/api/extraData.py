@@ -11,12 +11,11 @@ class ExtraData(object):
         self.pyObj = vm.pyVm.extraData
 
     def get(self, name, default=None):
-        rv = self.pyObj.getProp(name, default)
-        rv = pickle.loads(rv)
-        return rv
+        return self.cache.get(name, default)
 
     def set(self, name, value):
         self.pyObj.setProp(self._encode(name), self._encode(value))
+        del self.cache
 
     def __getitem__(self, name):
         rv = self.get(name, _NULL)
@@ -30,10 +29,15 @@ class ExtraData(object):
     def __repr__(self):
         return "<{}: {}>".format(self.__class__.__name__, self.cache)
 
+    def __iter__(self):
+        return self.cache.iterkeys()
+
     def _reCache(self):
         out = {}
-        for (name, value) in self.pyObj.info.iteritems():
-            out[self._decode(name)] = self._decode(value)
+        source = self.pyObj.info
+        if source:
+            for (name, value) in source.iteritems():
+                out[self._decode(name)] = self._decode(value)
         return out
 
     def _decode(self, value):
@@ -50,7 +54,12 @@ class ExtraData(object):
     @property
     def cache(self):
         _newSign = repr(self.pyObj.info)
-        if self._cacheSignature != _newSign:
+        if (self._cacheSignature != _newSign) or (not self._cache):
             self._cache = self._reCache()
             self._cacheSignature = _newSign
         return self._cache
+
+    @cache.deleter
+    def cache(self):
+        self._cacheSignature = None
+        self._cache = None
