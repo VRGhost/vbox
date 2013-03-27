@@ -16,3 +16,6 @@ class EmptyDvd(GuestAdditions):
 
     def getVmAttachMedium(self):
         return "emptydrive"
+
+    def _getInfo(self):
+        return None

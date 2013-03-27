@@ -35,6 +35,9 @@ class InteractiveGeneral(base.Child):
     expectedKwargs = DetachedGeneral.expectedKwargs
     defaultKwargs = defaultdict(lambda: None)
 
+    osType = base.pyVmProp("osType")
+    directory = base.pyVmProp("rootDir")
+
     def __init__(self, detached):
         super(InteractiveGeneral, self).__init__(
             **detached.boundKwargs)
@@ -44,13 +47,12 @@ class InteractiveGeneral(base.Child):
         def fget(self):
             def _parseGroup(el):
                 path = el.split(sep)
-                if not path[0]:
-                    path.pop(0)
-                return tuple(path)
-            return tuple(_parseGroup(el) for el in self.pyVm.groups)
+                assert not path[0]
+                path.pop(0)
+                return tuple(el for el in path if el)
+            rv = (_parseGroup(el) for el in self.pyVm.groups)
+            return tuple(el for el in rv if el)
         def fset(self, value):
             self.pyVm.groups = groupsToCli(value)
-        def fdel(self):
-            self.groups = ()
         return locals()
     groups = property(**groups())

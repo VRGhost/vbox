@@ -1,4 +1,8 @@
+import logging
+
 from collections import defaultdict
+
+is_container = lambda el: isinstance(el, (list, tuple, set, frozenset))
 
 class Base(object):
     """Base class for API objects."""
@@ -11,42 +15,27 @@ class Base(object):
 
     def __init__(self, *args, **kwargs):
         super(Base, self).__init__()
-        realKwargs = defaultdict(list)
-
-        for (name, el) in kwargs.iteritems():
-            self._constructKwargs(realKwargs, el, name)
-
-        for el in args:
-            self._constructKwargs(realKwargs, el)
-
-        boundKwargs = dict((name, tuple(value)) for (name, value) in realKwargs.iteritems())
-        # Ensure that all kwargs mentioned in the `expectedKwargs`
-        # are actually initialised in `realKwargs`
-        for name in self.expectedKwargs.keys():
-            if name not in boundKwargs:
-                boundKwargs[name]  = ()
-
-        self._verifyKwargs(boundKwargs)
-        boundKwargs = self._flatternLayout(boundKwargs)
-        self._setup(boundKwargs)
-        self.boundKwargs = boundKwargs
-        self._init()
+        self.__initParams = (tuple(args), kwargs)
+        self._initState()
 
     def _flatternLayout(self, kwargs):
         out = {}
         for (key, value) in kwargs.iteritems():
             isOk = self._getAllowedFn(key)
-            if (len(value) <= 1) and (not isOk(2)):
+            valLen = len(value)
+            if valLen <= 1:
                 # Assume that this is single object
-                if len(value) == 1:
+                if valLen == 1 and (not isOk(2)):
                     value = value[0]
-                else:
+                elif valLen == 0:
+                    assert self.defaultKwargs is not None, \
+                        (self, key)
                     valueCb = self.defaultKwargs.get(key)
                 
                     if valueCb is None:
                         # Do not init given property at all
                         continue
-                    value = valueCb()
+                    value = valueCb(self)
             out[key] = value
         return out
 
@@ -63,6 +52,8 @@ class Base(object):
             self.setProp(name, value)
             self._registerAsParent(value)
 
+        self._init()
+
     def setProp(self, name, value):
         setattr(self, name, value)
 
@@ -70,12 +61,12 @@ class Base(object):
         def _setParentCb(obj):
             try:
                 cb = obj.setParent
-            except AttributeError:
+            except AttributeError as err:
                 pass
             else:
                 cb(self)
 
-        if  isinstance(child, tuple):
+        if is_container(child):
             it = child
         else:
             it = (child, )
@@ -83,8 +74,36 @@ class Base(object):
         for el in it:
             _setParentCb(el)
 
-    def _init(self):
+    def _initState(self):
         """Custom initialisation function."""
+        (args, kwargs) = self.__initParams
+        realKwargs = defaultdict(list)
+
+        for (name, el) in kwargs.iteritems():
+            self._constructKwargs(realKwargs, el, name)
+
+        for el in args:
+            self._constructKwargs(realKwargs, el)
+
+        boundKwargs = dict((name, tuple(value)) for (name, value) in realKwargs.iteritems())
+        # Ensure that all kwargs mentioned in the `expectedKwargs`
+        # are actually initialised in `realKwargs`
+        for name in self.expectedKwargs.keys():
+            if name not in boundKwargs:
+                boundKwargs[name]  = ()
+
+        self._verifyKwargs(boundKwargs)
+        try:
+            boundKwargs = self._flatternLayout(boundKwargs)
+        except:
+            logging.error("Bounding kwargs {} failed for {}".format(
+                boundKwargs, self))
+            raise
+        self._setup(boundKwargs)
+        self.boundKwargs = boundKwargs
+
+    def _init(self):
+        """Custom initialisation."""
 
 
     def _verifyKwargs(self, obj):
@@ -111,8 +130,7 @@ class Base(object):
 
 
     def _constructKwargs(self, out, obj, name=None):
-        isContainer = lambda el: isinstance(el, (list, tuple, set, frozenset))
-
+        isContainer = is_container
         if isContainer(obj):
             for el in obj:
                 tmpOut = defaultdict(list)
@@ -155,12 +173,17 @@ class Child(Base):
     pyVb = property(lambda s: s.parent.pyVb)
     vm = property(lambda s: s.parent.vm)
 
+    def _initState(self):
+        """Do nothing in the __init__ handler."""
+        pass
+
     def setParent(self, parent):
         if self._parent is not None:
             raise Exception("Parent already set")
         self._parent = parent
-        # Re-call setup to apply actual changes.
-        self._setup(self.boundKwargs)
+        assert self._relationshipsConfigured()
+        # Perform the actual initalisation
+        super(Child, self)._initState()
 
     def _setup(self, kwargs):
         if self._relationshipsConfigured():

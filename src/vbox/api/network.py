@@ -7,11 +7,19 @@ class Network(base.Child):
         "nic": lambda cnt: True,
     }
 
+    defaultKwargs = {
+        "nic": lambda s: [NIC(type=nic.type)
+            for nic in s.pyVm.nics if nic.type is not None],
+    }
+
     def _getNicId(self, obj):
         return self.nic.index(obj)
 
 class _NicType(object):
     vbName = None
+
+    def __repr__(self):
+        return "<{} {!r}>".format(self.__class__.__name__, self.vbName)
 
 class NA(_NicType):
     """N/A for "Not Available." """
@@ -68,6 +76,8 @@ class NIC(base.Child):
         def fget(self):
             return self.types.find(self._pyObject.type)
         def fset(self, value):
+            if isinstance(value, basestring):
+                value = self.types.find(value)
             self._pyObject.type = value.vbName
         return locals()
     type = property(**type())

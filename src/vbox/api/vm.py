@@ -23,10 +23,10 @@ class VM(base.Base):
         "network": (0, 1),
     }
     defaultKwargs = {
-        "system": system.System,
-        "display": display.Display,
-        "network": network.Network,
-        "storage": storage.Storage,
+        "system": lambda s: system.System(),
+        "display": lambda s: display.Display(),
+        "network": lambda s: network.Network(),
+        "storage": lambda s: storage.Storage(),
     }
     pyVb = pyVm = None
 
@@ -61,6 +61,8 @@ class VM(base.Base):
             self.pyVm = vm
             self._general = general.InteractiveGeneral(value)
             self._registerAsParent(self._general)
+            print "SET" * 10
+            print self.general, id(self)
         return locals()
     general = property(**general())
 

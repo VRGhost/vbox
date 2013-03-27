@@ -75,7 +75,9 @@ class StorageController(base.VirtualMachinePart):
 
     def iterMedia(self):
         for (name, value) in self.iterMediaInfo():
-            yield (name, self._convertMediaVal(value))
+            pyObject = self._convertMediaVal(value)
+            if pyObject is not None:
+                yield (name, pyObject)
 
     def _convertMediaVal(self, val):
         if val["name"] == "none":
@@ -89,13 +91,16 @@ class StorageController(base.VirtualMachinePart):
                 return rv
 
         name = val.get("name")
-        if name == "emptydrive":
-            if self.type == "floppy":
-                return self.vb.floppies.empty
-            else:
-                return self.vb.dvds.empty
+
+        if self.type == "floppy":
+            lib = self.vb.floppies
         else:
-            raise NotImplementedError(name)
+            lib = self.vb.dvds
+
+        if name == "emptydrive":
+            return lib.empty
+        else:
+            return lib.get(name)
 
         raise Exception("Unknown media value {!r}".format(val))
 

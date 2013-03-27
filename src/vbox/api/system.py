@@ -29,7 +29,7 @@ class System(base.Child):
     }
 
     defaultKwargs = {
-        "cpu": CPU,
+        "cpu": lambda s: CPU(),
     }
 
     hwVirtualisation = base.pyVmProp("enableHwVirt")

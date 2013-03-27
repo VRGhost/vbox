@@ -1,8 +1,9 @@
 """VM class."""
+from collections import defaultdict, OrderedDict
+import datetime
+import os
 import re
 import time
-import datetime
-from collections import defaultdict, OrderedDict
 
 from vbox.cli import CmdError
 
@@ -21,6 +22,7 @@ class VM(base.VirtualBoxEntity):
 
     vm = property(lambda self: self)
     cli = property(lambda s: s.vb.cli)
+    rootDir = property(lambda s: os.path.dirname(s.getProp("CfgFile")))
 
     baloon = props.Int(
         "guestmemoryballoon", extraCb=util.controlCb("guestmemoryballoon"))
@@ -44,7 +46,6 @@ class VM(base.VirtualBoxEntity):
 
     name = property(lambda s: s.getProp("name"))
     idProps = ("name", "UUID", "_initId")
-    osType = property(lambda s: s.vb.info.ostypes.find(s.getProp("ostype")).id)
     changeTime = property(lambda s: datetime.datetime.strptime(
         s.getProp("VMStateChangeTime")[:-3], "%Y-%m-%dT%H:%M:%S.%f"))
 
@@ -164,28 +165,29 @@ class VM(base.VirtualBoxEntity):
 
     @property
     def ide(self):
+        """Only one IDE controller is allowed in the VirtualBox."""
         typ = "ide"
-        name = "Default {!r} Controller".format(typ)
-        obj = self.controllers.get(type=typ, name=name)
+        obj = self.controllers.get(type=typ)
         if not obj:
+            name = "Default {!r} Controller".format(typ)
             obj = self.controllers.create(name=name, type=typ)
         return obj
 
     @property
     def sata(self):
         typ = "sata"
-        name = "Default {!r} Controller".format(typ)
-        obj = self.controllers.get(type=typ, name=name)
+        obj = self.controllers.get(type=typ)
         if not obj:
+            name = "Default {!r} Controller".format(typ)
             obj = self.controllers.create(name=name, type=typ)
         return obj
 
     @property
     def floppy(self):
         typ = "floppy"
-        name = "Default {!r} Controller".format(typ)
-        obj = self.controllers.get(type=typ, name=name)
+        obj = self.controllers.get(type=typ)
         if not obj:
+            name = "Default {!r} Controller".format(typ)
             obj = self.controllers.create(name=name, type=typ)
         return obj
 
@@ -244,3 +246,15 @@ class VM(base.VirtualBoxEntity):
                     break
             if doExec:
                 self.updateInfo(True)
+
+    def osType():
+        doc = "The osType property."
+        def fget(self):
+            return self.vb.info.ostypes.find(
+                self.getProp("ostype")).id
+        def fset(self, value):
+            newVal = self.vb.info.ostypes.find(value).id
+            if newVal != self.osType:
+                self.setProp("ostype", newVal)
+        return locals()
+    osType = property(**osType())

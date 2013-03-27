@@ -42,8 +42,9 @@ class RemovableMedium(VirtualBoxMedium):
 
     def _getInfo(self):
         _id = self._initId
+        assert _id
         if os.path.exists(_id):
-            check = lambda info: os.path.realpath(info["Location"]) == _id
+            check = lambda info: os.path.realpath(self.location) == _id
         else:
             check = lambda info: _id == info["UUID"]
 
