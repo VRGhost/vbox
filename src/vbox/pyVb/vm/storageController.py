@@ -142,14 +142,14 @@ class StorageController(base.VirtualMachinePart):
         if not par:
             return None
 
-        ids = str(self._initId)
-        prefix = "storagecontroller"
+        matchRe = re.compile("^storagecontroller(\w+){}$".format(self._initId))
+        prefix = ""
         out = OrderedDict()
         for (name, value) in par.iteritems():
-            if not(name.startswith(prefix) and name.endswith(ids)):
+            match = matchRe.match(name)
+            if not match:
                 continue
-            # else
-            localName = name[len(prefix):-len(ids)]
+            localName = match.group(1)
             out[localName] = value
 
         if not out:
@@ -164,6 +164,7 @@ class StorageController(base.VirtualMachinePart):
             localName = "self-{}".format(name[len(namedprefix):])
             out[localName] = value
         
+        print self._info
         return out
 
 class ControllerGroup(base.PartGroup):

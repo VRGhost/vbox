@@ -13,6 +13,8 @@ def groupsToCli(vals):
         if not path.startswith(sep):
             path = sep + path
         return path
+    if not vals:
+        vals = ("", )
     return (_mkGroup(el) for el in vals)
 
 class DetachedGeneral(base.Base):
@@ -56,3 +58,10 @@ class InteractiveGeneral(base.Child):
             self.pyVm.groups = groupsToCli(value)
         return locals()
     groups = property(**groups())
+
+    def befoureSetup(self, kwargs):
+        # Remove 'directory' if it was defined.
+        # It is not possible to change that is VM had been already created.
+        # And by the time `InteractiveGeneral` is initalised,
+        # VM should already exist
+        kwargs.pop("directory", None)

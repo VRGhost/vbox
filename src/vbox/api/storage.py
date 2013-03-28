@@ -6,8 +6,8 @@ from . import base
 def _getMedia(self, typ):
     for cnt in self.pyVm.controllers:
         for (name, media) in cnt.iterMedia():
-            if typ._findMediaFilter(media):
-                yield media
+            if typ.findMediaFilter(media):
+                yield (cnt.type, media)
 
 class Storage(base.Child):
 
@@ -18,17 +18,44 @@ class Storage(base.Child):
         "fdd": lambda cnt: True,
     }
     defaultKwargs = {
-        "hdd": lambda s: [HDD(size=m.size) for m in _getMedia(s, HDD)],
+        "hdd": lambda s: [HDD(controller=cnt, size=media.size)
+            for (cnt, media) in _getMedia(s, HDD)],
     }
 
     def _getHddId(self, child):
-        return self.hdd.index(child)
+        return self._findId(self.hdd, child)    
 
     def _getOpticalId(self, child):
-        return self.optical.index(child)
+        return self._findId(self.optical, child)
 
     def _getFddId(self, child):
-        return self.fdd.index(child)
+        return self._findId(self.fdd, child)
+
+    def _findId(self, sequence, child):
+        return sequence.index(child)
+
+    def _iterControllers(self, type):
+        if type == "ide":
+            return (self.pyVm.ide, )
+        elif type == "sata":
+            return (self.pyVm.sata, )
+        elif type == "floppy":
+            return (self.pyVm.floppy, )
+        else:
+            raise NotImplementedError(type)
+
+    def _findMedia(self, pyObj, controller):
+        idx = pyObj.idx
+        num = 0
+        for cnt in self._iterControllers(controller):
+            for (slot, obj) in cnt.iterMedia():
+                if not pyObj.findMediaFilter(obj):
+                    continue
+                elif num == idx:
+                    return obj
+                else:
+                    num += 1
+        return None
 
     @property
     def dvd(self):
@@ -44,43 +71,32 @@ class Medium(base.Child):
     idx = None
     _pyImage = None
 
-    def _getController(self):
-        return self.pyVm.ide
-
-    def _findMedia(self):
-        num = 0
-        for el in self._getController().iterMedia():
-            obj = el[1]
-            if (obj is None) or (not self._findMediaFilter(obj)):
-                continue
-            elif num == self.idx:
-                return obj
-            else:
-                num += 1
-        return None
-
     @classmethod
-    def _findMediaFilter(self, obj):
+    def findMediaFilter(self, obj):
         raise NotImplementedError
 
 class HDD(Medium):
 
     kwargName = "hdd"
     expectedKwargs = {
+        "controller": (0, 1),
         "size": 1,
         "name": (0, 1),
     }
 
     defaultKwargs = {
         "name": None,
+        "controller": "ide",
     }
 
     idx = property(lambda s: s.parent._getHddId(s))
 
     def befoureSetup(self, kwargs):
-        myImage = self._findMedia()
-        print id(self.vm)
+        myImage = self.parent._findMedia(
+            self, kwargs["controller"])
         if myImage is None:
+            print kwargs
+            1/0
             createKw = {
                 "size": kwargs["size"],
             }
@@ -126,7 +142,7 @@ class HDD(Medium):
     size = property(**size())
 
     @classmethod
-    def _findMediaFilter(cls, obj):
+    def findMediaFilter(cls, obj):
         return obj.getVmAttachType() == "hdd"
 
 class Removable(Medium):
@@ -184,12 +200,15 @@ class DVD(Removable):
         return img
 
     @classmethod
-    def _findMediaFilter(cls, obj):
+    def findMediaFilter(cls, obj):
         return obj.getVmAttachType() == "dvddrive"
 
 class FDD(Removable):
     kwargName = "fdd"
     idx = property(lambda s: s.parent._getFddId(s))
+
+    defaultKwargs = Removable.defaultKwargs.copy()
+    defaultKwargs["controller"] = "floppy"
 
     def _paramToPyObj(self, param):
         if param:
@@ -198,9 +217,7 @@ class FDD(Removable):
             img = self.pyVb.floppies.empty
         return img
 
-    def _getController(self):
-        return self.pyVm.floppy
 
     @classmethod
-    def _findMediaFilter(cls, obj):
+    def findMediaFilter(cls, obj):
         return obj.getVmAttachType() == "fdd"

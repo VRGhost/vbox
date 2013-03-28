@@ -61,8 +61,6 @@ class VM(base.Base):
             self.pyVm = vm
             self._general = general.InteractiveGeneral(value)
             self._registerAsParent(self._general)
-            print "SET" * 10
-            print self.general, id(self)
         return locals()
     general = property(**general())
 

@@ -204,7 +204,11 @@ class Child(Base):
 def pyVmProp(name):
     """Bound property of pyVm."""
     def pyVmProp_fset(self, value):
-        setattr(self.pyVm, name, value)
+        try:
+            setattr(self.pyVm, name, value)
+        except:
+            print (name, value)
+            raise
     def pyVmProp_fget(self):
         return getattr(self.pyVm, name)
     return property(pyVmProp_fget, pyVmProp_fset)
