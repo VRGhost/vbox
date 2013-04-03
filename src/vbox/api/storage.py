@@ -1,5 +1,7 @@
+import collections
 import itertools
 import os
+import threading
 
 from . import base
 
@@ -20,42 +22,57 @@ class Storage(base.Child):
     defaultKwargs = {
         "hdd": lambda s: [HDD(controller=cnt, size=media.size)
             for (cnt, media) in _getMedia(s, HDD)],
+        "optical": lambda s: [DVD(controller=cnt)
+            for (cnt, media) in _getMedia(s, DVD)],
+        "fdd": lambda s: [FDD(controller=cnt)
+            for (cnt, media) in _getMedia(s, FDD)],
     }
 
-    def _getHddId(self, child):
-        return self._findId(self.hdd, child)    
 
-    def _getOpticalId(self, child):
-        return self._findId(self.optical, child)
+    _mediaFinderCache = None
+    def _findMedia(self, medium, controller):
+        if self._mediaFinderCache is None:
+            self._mediaFinderCache = {}
+        if controller not in self._mediaFinderCache:
+            self._mediaFinderCache[controller] = self._iterAllMedia(controller)
+        gen = self._mediaFinderCache[controller]
+        if gen is not None:
+            try:
+                return gen.next()
+            except StopIteration:
+                self._mediaFinderCache[controller] = None
+        return None
 
-    def _getFddId(self, child):
-        return self._findId(self.fdd, child)
-
-    def _findId(self, sequence, child):
-        return sequence.index(child)
+    def _iterAllMedia(self, controllerType):
+        for cnt in self._iterControllers(controllerType):
+            for (slot, obj) in cnt.iterMedia():
+                yield cnt, slot, obj
 
     def _iterControllers(self, type):
+        # Ensure that at least one controller of a given type
+        # exists
         if type == "ide":
-            return (self.pyVm.ide, )
+            self.pyVm.ide
         elif type == "sata":
-            return (self.pyVm.sata, )
+            self.pyVm.sata
         elif type == "floppy":
-            return (self.pyVm.floppy, )
+            self.pyVm.floppy
         else:
             raise NotImplementedError(type)
+        return self.pyVm.controllers.find(type=type)
 
-    def _findMedia(self, pyObj, controller):
-        idx = pyObj.idx
-        num = 0
-        for cnt in self._iterControllers(controller):
-            for (slot, obj) in cnt.iterMedia():
-                if not pyObj.findMediaFilter(obj):
-                    continue
-                elif num == idx:
-                    return obj
-                else:
-                    num += 1
-        return None
+    def _findEmptyController(self, type):
+        """Find controller that has at least one empty slot to attach new device to."""
+        return self._iterControllers(type).next()
+
+    def _iterAttachedImages(self):
+        for medium in self._iterMediums():
+            if medium.initialised and medium._pyImage:
+                yield medium._pyImage
+
+    def _iterMediums(self):
+        assert self.initialised
+        return itertools.chain(self.hdd, self.optical, self.fdd)
 
     @property
     def dvd(self):
@@ -68,8 +85,14 @@ class Storage(base.Child):
         return iter(self.optical)
 
 class Medium(base.Child):
-    idx = None
     _pyImage = None
+
+    expectedKwargs = {
+        "controller": (0, 1),
+    }
+    defaultKwargs = {
+        "controller": lambda s: "ide",
+    }
 
     @classmethod
     def findMediaFilter(self, obj):
@@ -78,25 +101,21 @@ class Medium(base.Child):
 class HDD(Medium):
 
     kwargName = "hdd"
-    expectedKwargs = {
-        "controller": (0, 1),
+    expectedKwargs = Medium.expectedKwargs.copy()
+    expectedKwargs.update({
         "size": 1,
         "name": (0, 1),
-    }
+    })
 
-    defaultKwargs = {
+    defaultKwargs = Medium.defaultKwargs.copy()
+    defaultKwargs.update({
         "name": None,
-        "controller": "ide",
-    }
-
-    idx = property(lambda s: s.parent._getHddId(s))
+    })
 
     def befoureSetup(self, kwargs):
-        myImage = self.parent._findMedia(
+        media = self.parent._findMedia(
             self, kwargs["controller"])
-        if myImage is None:
-            print kwargs
-            1/0
+        if media is None:
             createKw = {
                 "size": kwargs["size"],
             }
@@ -123,10 +142,14 @@ class HDD(Medium):
             })
 
             myImage = self.pyVb.hdds.create(**createKw)
-            self._getController().attach(myImage)
-
+            controller = self.parent._findEmptyController(kwargs["controller"])
+            slot = controller.attach(myImage)
+        else:
+            (controller, slot, myImage ) = media
         assert myImage is not None
         self._pyImage = myImage
+        self._pyController = controller
+        self._pySlot = slot
 
     def size():
         doc = "The size property."
@@ -147,21 +170,30 @@ class HDD(Medium):
 
 class Removable(Medium):
 
-    expectedKwargs = {
+    expectedKwargs = Medium.expectedKwargs.copy()
+    expectedKwargs.update({
         "target": (0, 1)
-    }
+    })
 
-    defaultKwargs = {
+    defaultKwargs = Medium.defaultKwargs.copy()
+    defaultKwargs.update({
         "target": lambda s: None,
-    }
+    })
 
     def befoureSetup(self, kwargs):
-        myImage = self._findMedia()
-        if myImage is None:
+        media = self.parent._findMedia(
+            self, kwargs["controller"])
+        if media is None:
             trg = kwargs["target"]
-            slot = self._getController().attach(self._paramToPyObj(trg))
-            myImage = self._getController().getMedia(slot)
+            controller = self.parent._findEmptyController(kwargs["controller"])
+            slot = controller.attach(self._paramToPyObj(trg))
+            myImage = controller.getMedia(slot)
+        else:
+            (controller, slot, myImage ) = media
+
         self._pyImage = myImage
+        self._pyController = controller
+        self._pySlot = slot
 
     def target():
         doc = "The target property."
@@ -177,10 +209,7 @@ class Removable(Medium):
             if img == oldImg:
                 return
             assert oldImg
-            controller = self._getController()
-            mySlot = controller.findSlotOf(oldImg)
-            assert mySlot, mySlot
-            controller.attach(img, slot=mySlot)
+            self._pyController.attach(img, slot=self._pySlot)
             self._pyImage = img
         return locals()
     target = property(**target())
@@ -190,7 +219,6 @@ class Removable(Medium):
 
 class DVD(Removable):
     kwargName = "optical"
-    idx = property(lambda s: s.parent._getOpticalId(s))
 
     def _paramToPyObj(self, param):
         if param:
@@ -205,7 +233,6 @@ class DVD(Removable):
 
 class FDD(Removable):
     kwargName = "fdd"
-    idx = property(lambda s: s.parent._getFddId(s))
 
     defaultKwargs = Removable.defaultKwargs.copy()
     defaultKwargs["controller"] = "floppy"

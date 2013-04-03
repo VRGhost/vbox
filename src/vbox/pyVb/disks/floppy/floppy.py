@@ -6,6 +6,8 @@ class Floppy(base.RemovableMedium):
         return "fdd"
 
 class EmptyFloppy(Floppy):
+
+    size = property(lambda s: 0)
     
     def getVmAttachMedium(self):
         return "emptydrive"

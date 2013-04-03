@@ -164,7 +164,6 @@ class StorageController(base.VirtualMachinePart):
             localName = "self-{}".format(name[len(namedprefix):])
             out[localName] = value
         
-        print self._info
         return out
 
 class ControllerGroup(base.PartGroup):

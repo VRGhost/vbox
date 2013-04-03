@@ -14,6 +14,8 @@ class GuestAdditions(Dvd):
 
 class EmptyDvd(GuestAdditions):
 
+    size = property(lambda s: 0)
+
     def getVmAttachMedium(self):
         return "emptydrive"
 

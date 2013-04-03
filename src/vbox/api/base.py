@@ -12,6 +12,7 @@ class Base(object):
     expectedKwargs = None # Replace with dict in child classes!
     defaultKwargs = None
     boundKwargs = None
+    initialised = False
 
     def __init__(self, *args, **kwargs):
         super(Base, self).__init__()
@@ -104,6 +105,7 @@ class Base(object):
 
     def _init(self):
         """Custom initialisation."""
+        self.initialised = True
 
 
     def _verifyKwargs(self, obj):
