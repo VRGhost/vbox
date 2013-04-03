@@ -75,3 +75,13 @@ class VM(base.Base):
         super(VM, self).__init__(*args, **kwargs)
 
         self.meta = ExtraData(self)
+
+    def clone(self, newName):
+        newPyVm = self.pyVm.clone(name=newName)
+        myCls = type(self)
+        return myCls(
+            general.DetachedGeneral(
+                name=newPyVm.name,
+                osType=newPyVm.osType,
+            )
+        )
