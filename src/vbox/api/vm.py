@@ -35,6 +35,8 @@ class VM(base.Base):
     powerOff = base.pyVmProp("powerOff")
     suspend = base.pyVmProp("suspend")
     destroy = base.pyVmProp("destroy")
+    state = base.pyVmProp("state")
+    guest = base.pyVmProp("guest")
 
     meta = None
     vm = property(lambda s: s)

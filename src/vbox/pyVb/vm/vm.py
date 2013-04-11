@@ -14,6 +14,7 @@ from .storageController import ControllerGroup
 from .nic import NicGroup
 from .state import State
 from .extraData import ExtraData
+from .guest import Guest
 
 class VM(base.VirtualBoxEntity):
     
@@ -49,7 +50,7 @@ class VM(base.VirtualBoxEntity):
     changeTime = property(lambda s: datetime.datetime.strptime(
         s.getProp("VMStateChangeTime")[:-3], "%Y-%m-%dT%H:%M:%S.%f"))
 
-    controllers = state = None
+    controllers = state = guest = None
 
     def __init__(self, *args, **kwargs):
         super(VM, self).__init__(*args, **kwargs)
@@ -57,6 +58,7 @@ class VM(base.VirtualBoxEntity):
         self.controllers = ControllerGroup(self)
         self.nics = NicGroup(self)
         self.extraData = ExtraData(self)
+        self.guest = Guest(self)
 
         self.cli.addPostCmdExecListener(self._onExecCmd)
 
@@ -218,7 +220,7 @@ class VM(base.VirtualBoxEntity):
             if quiet:
                 return False
             else:
-                raise Exception("VM in running. Can not {}".format(props))
+                raise Exception("VM is running. Can not {}".format(props))
         modifyVmCmd = []
         for (name, value) in props.iteritems():
             modifyVmCmd.extend(("--" + name, value))

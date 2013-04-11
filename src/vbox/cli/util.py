@@ -27,7 +27,8 @@ def splitRecord(line, sep):
     if sep not in line:
         return None
 
-    return [dequote(el) for el in line.split(sep, 1)]
+    (key, value) = line.split(sep, 1)
+    return (dequote(key), dequote(value))
 
 
 def iterParams(txt):

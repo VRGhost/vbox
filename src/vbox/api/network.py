@@ -78,6 +78,7 @@ class NIC(base.Child):
         def fset(self, value):
             if isinstance(value, basestring):
                 value = self.types.find(value)
-            self._pyObject.type = value.vbName
+            if value != self.type:
+                self._pyObject.type = value.vbName
         return locals()
     type = property(**type())

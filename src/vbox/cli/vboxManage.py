@@ -18,6 +18,7 @@ class VBoxManage(base.CliVirtualBoxElement):
             "list": List(_cli),
             "showhdinfo": infoCmds.ShowHdInfo(_cli),
             "showvminfo": infoCmds.ShowVmInfo(_cli),
+            "guestproperty": infoCmds.GuestProperty(_cli),
             "startvm": chgCmds.StartVm(_cli),
             "storageattach": chgCmds.StorageAttach(_cli),
             "storagectl": chgCmds.StorageCtl(_cli),
