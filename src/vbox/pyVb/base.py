@@ -1,7 +1,22 @@
 """Base classes for logical virtualbox structure."""
 import threading
+import collections
 
 from .util import boundProperty
+
+class _NullDict(collections.Mapping):
+    """Immutable dict-like object."""
+
+    def __getitem__(self, name):
+        return None
+
+    def __iter__(self):
+        return ()
+
+    def __len__(self):
+        return 0
+
+NullDict = _NullDict()
 
 class VirtualBoxElement(object):
     
@@ -110,7 +125,7 @@ class InfoKeeper(VirtualBoxElement):
         if self._info:
             rv = self._info.copy()
         else:
-            rv = None
+            rv = NullDict
         return rv
 
     @info.deleter

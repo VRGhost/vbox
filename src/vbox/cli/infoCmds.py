@@ -26,11 +26,3 @@ class ShowVmInfo(subCmd.PlainCall):
 
     def __call__(self, id):
         return super(ShowVmInfo, self).__call__("--details", "--machinereadable", id)
-
-
-class GuestProperty(subCmd.PlainCall):
-
-    changesVmState = False
-
-    def enumerate(self, id):
-        return self("enumerate", id)
