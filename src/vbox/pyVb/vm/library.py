@@ -93,3 +93,9 @@ class VmLibrary(base.VirtualBoxEntityType):
 
     def listRegisteredIds(self):
         return self.vb.cli.manage.list.vms().values()
+
+    def get(self, vbId):
+        try:
+            return super(VmLibrary, self).get(vbId)
+        except vm.exceptions.VmInaccessible:
+            raise KeyError(vbId)

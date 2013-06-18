@@ -1,6 +1,7 @@
 """Base classes for logical virtualbox structure."""
-import threading
 import collections
+import logging
+import threading
 
 from .util import boundProperty
 
@@ -67,7 +68,16 @@ class VirtualBoxEntityType(VirtualBoxElement):
 
     def list(self):
         if not self._listUpToDate:
-            self._listCache = tuple(self.get(id) for id in self.listRegisteredIds())
+            _list = []
+            for id in self.listRegisteredIds():
+                try:
+                    _obj = self.get(id)
+                except KeyError:
+                    logging.debug("Object {!r} is registered but can not be acquired.".format(id))
+                else:
+                    _list.append(_obj)
+
+            self._listCache = tuple(_list)
 
         return iter(self._listCache)
 
@@ -75,6 +85,7 @@ class VirtualBoxEntityType(VirtualBoxElement):
         raise NotImplementedError
 
     def get(self, objId):
+        # Can raise KeyError if objId is invalid
         newObj = self.cls(self, objId)
         ids = frozenset(newObj.iterIds())
         for el in self._objects:

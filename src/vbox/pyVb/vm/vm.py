@@ -9,7 +9,11 @@ from vbox.cli import CmdError
 
 from .. import util as props
 
-from . import base, util
+from . import (
+    base,
+    exceptions,
+    util,
+)
 from .storageController import ControllerGroup
 from .nic import NicGroup
 from .state import State
@@ -202,6 +206,9 @@ class VM(base.VirtualBoxEntity):
 
     def onInfoUpdate(self):
         super(VM, self).onInfoUpdate()
+        inaccessibleMark = "<inaccessible>"
+        if self.info.get("name", inaccessibleMark) == inaccessibleMark:
+            raise exceptions.VmInaccessible(self._initId)
         self.controllers.updateInfo(True)
         self.nics.updateInfo(True)
 
