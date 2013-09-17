@@ -1,7 +1,12 @@
-"""The VBox structure is a three-layered one.
+"""VBox project uses layered architecture
 
-Bottommost layer is `cli` -- actual part that calls programs and parses their outputs (where possible);
-Middle layer is `pyVb` -- it organises CLI bindings to pythonic object structures and performs final parsing and typecasting;
-Topmost layer is `api` -- the one that actually gets exposed to the parent library. Should provide nice and consistent usage experience;
+'VBox' is the hub object that provides current API bindings (this object represents a particula virtualbox installation).
+
+'objective' - provides higher-order command line bindings and completely parsed outputs.
+'cli' - provides bindings to the virtual box command line interface. Performs initial output parsing -- splits output to fields.
+'popen' - lowes layer, manages calling executables.
 """
-from .api import *
+
+from . import exceptions
+
+from .vbox import VBox

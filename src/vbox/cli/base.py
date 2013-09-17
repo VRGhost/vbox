@@ -1,148 +1,71 @@
 import collections
-from distutils.spawn import find_executable
 import os
-import subprocess
-import weakref
 
-from ..pyVb import base
-from .popen import Popen
+from . import (
+    util,
+    exceptions,
+)
 
-VirtualBoxElement = base.VirtualBoxElement
+class BaseCmd(object):
 
-class CliVirtualBoxElement(VirtualBoxElement):
-    cliAccessLock = property(lambda s: s.parent.cliAccessLock)
+    prefix = ()
+    # Callable object that accepts (args, output) arguments as input and returns parsed structure.
+    parser = util.parsers.Dummy()
+    formatter = None # callable that maps arguments it is passed to the command line args (e.g. util.Formatter)
+     # callable that returns 'False' if given output should raise exception (e.g. util.OutCheck)
+    outCheck = util.OutCheck(okRc=(0, ))
 
-class TrailingCmd(CliVirtualBoxElement):
+    def __init__(self, interface):
+        super(BaseCmd, self).__init__()
+        self.interface = interface
 
-    head = None
-    changesVmState = False
+    def __call__(self, *args, **kwargs):
+        """Main command handler."""
+        args = self._toCmdLine(args, kwargs)
+        (cmd, rc, out) = self._exec(args)
+        cmd = tuple(cmd)
+        self._checkErrOutput(args, cmd, rc, out)
+        return self._parse(args, out)
 
-    def __init__(self, *args, **kwargs):
-        super(TrailingCmd, self).__init__(*args, **kwargs)
-        self._refs = collections.defaultdict(list)
+    def _parse(self, args, output):
+        return self.parser(args, output)
 
-    def getCmd(self, tail):
-        cmd = [self.head]
-        cmd.extend(tail)
-        return tuple(cmd)
+    def _toCmdLine(self, args, kwargs):
+        """Format call arguments to the command line argruments."""
+        return self.formatter(args, kwargs)
 
-    def call(self, tail):
+    def _checkErrOutput(self, args, cmd, rc, out):
+        if not self.outCheck(args, rc,  out):
+            raise exceptions.CalledProcessError(cmd, rc, out)
+
+    def _exec(self, cmd):
+        """Execute command line command provided."""
         raise NotImplementedError
 
-    def popen(self, tail, **kwargs):
-        raise NotImplementedError
-
-    def checkOutput(self, tail):
-        raise NotImplementedError
-
-    def addPreCmdExecListener(self, cb):
-        return self._addRef("pre", cb)
-
-    def addPostCmdExecListener(self, cb):
-        return self._addRef("post", cb)
-
-    def _callPreCmdExec(self, cmd):
-        self._callRefs("pre", cmd=cmd)
-
-    def _callPostCmdExec(self, cmd, rc):
-        self._callRefs("post", cmd=cmd, rc=rc)
-
-    def _callRefs(self, name, **kwargs):
-        kwargs["source"] = self
-        toRm = []
-        for el in self._refs[name]:
-            if len(el) == 2:
-                (objRef, fnCb) = el
-                obj = objRef()
-                if obj is None:
-                    toRm.append(el)
-                    continue
-                cb = lambda *a, **kw: fnCb(obj, *a, **kw)
-            else:
-                assert len(el) == 1
-                cb = el[0]()
-                if cb is None:
-                    toRm.append(el)
-                    continue
-
-            cb(**kwargs)
-
-        for el in toRm:
-            self._rmRef(name, el)
-
-    def _addRef(self, name, cb):
-        try:
-            obj = cb.im_self
-            cb = cb.im_func
-        except AttributeError:
-            # Not bound method
-            ref = (weakref.ref(cb), )
-        else:
-            ref = (weakref.ref(obj), cb)
-
-        self._refs[name].append(ref)
-        return lambda: self._rmRef(name, ref)
-
-    def _rmRef(self, name, ref):
-        self._refs[name].remove(ref)
-
-class Command(TrailingCmd):
+class RealCommand(BaseCmd):
     """Python representation of VboxManage executable."""
 
-    def __init__(self, parent, executable):
-        super(Command, self).__init__(parent)
-        self.head = find_executable(executable)
-        if (not self.head) or (not os.path.isfile(self.head)):
-            raise Exception("Failed to locate virtualbox executable {!r}".format(executable))
+    def __init__(self, interface, executable):
+        super(RealCommand, self).__init__(interface)
+        self.subproc = interface.popen.bind(executable)
 
-    def getCmd(self, tail):
-        cmd = super(Command, self).getCmd(tail)
-        return self.convertCmd(cmd)
+    def _exec(self, cmd):
+        return self.subproc(cmd)
 
-    def convertCmd(self, cmd):
-        rv = []
-        for el in cmd:
-            notString = not isinstance(el, basestring)
+    def childCall(self, cmd):
+        return self._exec(cmd)
 
-            if isinstance(el, collections.Iterable) and notString:
-                el = ','.join(self.convertCmd(el))
+    def __repr__(self):
+        return "<{} {!r}>".format(self.__class__.__name__, self.subproc)
 
-            if notString:
-                el = str(el)
-            rv.append(el)
-        return tuple(rv)
+class SubCommand(BaseCmd):
 
-    def call(self, tail):
-        with self.cliAccessLock:
-            (cmd, proc) = self.popen(tail,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                stdin=None
-            )
-            stdout = ""
-            while proc.poll() is None:
-                (out, err) = proc.communicate()
-                assert err is None
-                stdout += out
-        assert proc.returncode is not None
-        return (proc.returncode, cmd, stdout)
+    def __init__(self, interface, parent):
+        super(SubCommand, self).__init__(interface)
+        self.parent = parent
 
-    def checkOutput(self, tail, okRc=(0, )):
-        (rc, cmd, out) = self.call(tail)
-        
-        if rc == 0:
-            return stdout
-        else:
-            raise subprocess.CalledProcessError(rc, cmd, stdout)
+    def _exec(self, cmd):
+        return self.parent.childCall(cmd)
 
-    def popen(self, tail, **kwargs):
-        cmd = self.getCmd(tail)
-        with self.cliAccessLock:
-            self._callPreCmdExec(cmd)
-            finishFn = lambda proc: self._callPostCmdExec(cmd, proc.returncode)
-            proc = Popen(
-                cmd, 
-                onFinish=finishFn,
-                **kwargs
-            )
-        return (cmd, proc)
+    def __repr__(self):
+        return "<{} parent={!r}>".format(self.__class__.__name__, self.parent)
