@@ -12,8 +12,11 @@ class BaseCmd(object):
     # Callable object that accepts (args, output) arguments as input and returns parsed structure.
     parser = util.parsers.Dummy()
     formatter = None # callable that maps arguments it is passed to the command line args (e.g. util.Formatter)
-     # callable that returns 'False' if given output should raise exception (e.g. util.OutCheck)
+    # callable that returns 'False' if given output should raise exception (e.g. util.OutCheck)
     outCheck = util.OutCheck(okRc=(0, ))
+
+    classNamePrefix = True # If this field is set to true, all generated command lines will be prefixed with the lowercase name of class.
+    # This is for convinience only, as it is assumed that all objects declared on the CLI level will be have names of the appropriate CLI functions
 
     def __init__(self, interface):
         super(BaseCmd, self).__init__()
@@ -32,7 +35,12 @@ class BaseCmd(object):
 
     def _toCmdLine(self, args, kwargs):
         """Format call arguments to the command line argruments."""
-        return self.formatter(args, kwargs)
+        rv = self.formatter(args, kwargs)
+        if self.classNamePrefix:
+            new = [self.__class__.__name__.lower()]
+            new.extend(rv)
+            rv = tuple(new)
+        return rv
 
     def _checkErrOutput(self, args, cmd, rc, out):
         if not self.outCheck(args, rc,  out):

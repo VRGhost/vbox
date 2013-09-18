@@ -1,9 +1,8 @@
 from . import vm
 
-class Objective(object):
+class VirtualBox(object):
 
     def __init__(self, cli):
-        super(Objective, self).__init__()
+        super(VirtualBox, self).__init__()
         self.cli = cli
-
         self.vms = vm.Library(self)

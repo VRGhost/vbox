@@ -22,8 +22,6 @@ class ListVmsParser(util.parsers.Dict):
                 uid.rstrip('}'),
             )
 
-
-
 def gen_list_check(*args):
     def _check(cmd, out):
         return (len(cmd) == 2) and (cmd[0] == "list") and (cmd[1] in args)
@@ -38,7 +36,7 @@ class List(base.SubCommand):
 
     formatter = util.Formatter(
         all=("what", ),
-        positional=("list", "{what}", ),
+        positional=("{what}", ),
         mandatory=(),
     )
     outCheck = util.OutCheck(

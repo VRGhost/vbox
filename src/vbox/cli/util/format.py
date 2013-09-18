@@ -38,20 +38,21 @@ class Formatter(object):
                 self._unnamed.add(el[1:-1])
 
     def __call__(self, args, kwargs):
-        mapped = self._map(args, kwargs)
-        self._verify(mapped)
-        cast = self._castValues(mapped)
-        rv = self._buildCmd(cast)
+        mapped = self.map(args, kwargs)
+        self.verify(mapped)
+        cast = self.castValues(mapped)
+        rv = self.buildCmd(cast)
         return rv
 
-    def _buildCmd(self, data):
+    def buildCmd(self, data):
         toAdd = data.copy()
         out = []
         unnamed = self._unnamed
         def _add(key, value):
             if key not in unnamed:
                 out.append("--{}".format(key))
-            out.append(value)
+            if value is not None:
+                out.append(value)
 
         # firstly, map positionals.
         for name in self.positional:
@@ -70,7 +71,7 @@ class Formatter(object):
             _add(name, value)
         return tuple(out)
 
-    def _castValues(self, data):
+    def castValues(self, data):
         """Cast argument values to their appropriate string formats."""
         flags = self.flags
         onOff = self.onOff
@@ -79,7 +80,7 @@ class Formatter(object):
             if name in onOff:
                 newVal = "on" if value else "off"
             elif name in flags:
-                newVal = ("--" + name) if value else ""
+                newVal = ("--" + name) if value else None
             elif is_container(value):
                 newVal = ",".join(str(el) for el in value)
             else:
@@ -88,13 +89,15 @@ class Formatter(object):
             cast[name] = newVal
         return cast
 
-    def _verify(self, data):
+    def verify(self, data):
         """Verify that inputs conform to the specefication."""
         provided = frozenset(data.keys())
         if not self.mandatory.issubset(provided):
             raise TypeError("Mandatory arguments {} not provided".format(self.mandatory - provided))
+        if not provided.issubset(self.all):
+            raise TypeError("Unexpected arguments {}".format(provided - frozenset(self.all)))
 
-    def _map(self, args, kwargs):
+    def map(self, args, kwargs):
         mapped = {}
         # Map 'args' first (if any)
         for (name, value) in zip(self.all, args):
