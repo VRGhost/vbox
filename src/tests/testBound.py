@@ -10,7 +10,7 @@ class TestBound(unittest.TestCase):
     def setUp(self):
         import vbox
         logging.basicConfig(level=logging.DEBUG)
-        self.bound = vbox.VBox(['C:\Program Files\Oracle\VirtualBox']).bound
+        self.bound = vbox.VBox(['C:\Program Files\Oracle\VirtualBox'], debug=True).bound
 
     def test_create_vm(self):
         vms = self.bound.vms
@@ -20,6 +20,7 @@ class TestBound(unittest.TestCase):
         vm = self.bound.vms.new(name)
         vm.create()
         self.assertTrue(name in vms)
+        vm.info
         self.assertNotEqual(vm.info["memory"], "123")
         vm.modify(memory="123")
         self.assertEqual(vm.info["memory"], "123")

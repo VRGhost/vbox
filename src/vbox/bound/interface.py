@@ -1,4 +1,7 @@
-from . import vm
+from . import (
+    vm,
+    hdd,
+)
 
 class VirtualBox(object):
 
@@ -6,3 +9,4 @@ class VirtualBox(object):
         super(VirtualBox, self).__init__()
         self.cli = cli
         self.vms = vm.Library(self)
+        self.hdds = hdd.Library(self)

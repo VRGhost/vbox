@@ -4,17 +4,10 @@ refreshing = base.refreshing
 
 class VM(base.Entity):
 
-    _info = None
-    info = property(lambda s: s._info())
+    info = base.refreshedProperty(lambda s: s.cli.manage.showVMInfo(s.id))
 
     def __init__(self, *args, **kwargs):
         super(VM, self).__init__(*args, **kwargs)
-
-        self._info = base.Caching(lambda: self.cli.manage.showVMInfo(self.id))
-
-    def refresh(self):
-        super(VM, self).refresh()
-        self._info.refresh()
 
     @refreshing
     def create(self, **kwargs):
@@ -29,6 +22,7 @@ class VM(base.Entity):
         self.cli.manage.unregisterVM(self.id, delete=delete)
         self.library.pop(self)
 
+    @refreshing
     def destroy(self):
         self.unregister(True)
 
@@ -41,6 +35,24 @@ class VM(base.Entity):
     resume = refreshing(lambda s: s.cli.manage.controlVM.resume(s.id))
     pause = refreshing(lambda s: s.cli.manage.controlVM.pause(s.id))
 
+    def is_(self, challange):
+        if super(VM, self).is_(challange):
+            return True
+        try:
+            if self.info["UUID"] == challange:
+                return True
+        except KeyError:
+            pass
+
+        return False
+
 class Library(base.Library):
 
     entityCls = VM
+
+    @base.refreshed
+    def listRegistered(self):
+        out = []
+        for (name, uuid) in self.cli.manage.list.vms().items():
+            out.append(self.getOrCreate(uuid))
+        return tuple(out)

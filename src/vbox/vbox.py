@@ -3,6 +3,7 @@ import os
 import sys
 
 from . import (
+    api,
     bound,
     cli,
     exceptions,
@@ -15,8 +16,12 @@ class VBox(object):
 
     installRoot = None # Will contain path that
 
-    def __init__(self, extraPath=None):
-        """`extraPath` - list of extra directories to check for the virtualbox executables."""
+    def __init__(self, extraPath=None, debug=False):
+        """`extraPath` - list of extra directories to check for the virtualbox executables.
+            `debug` - runs bindings in the debugging mode, enables run-time sainity checks.
+        """
+        self.debug = debug
+
         toCheck = []
         if extraPath:
             toCheck.extend(extraPath)
@@ -26,6 +31,7 @@ class VBox(object):
         self.popen = self._findInstall(toCheck)
         self.cli = cli.CommandLineInterface(self.popen)
         self.bound = bound.VirtualBox(self.cli)
+        self.api = api.VirtualBox(self.bound)
         # end layer assembly
         self.installRoot = self.popen.root
 
@@ -33,7 +39,7 @@ class VBox(object):
         for testDir in dirs:
             if os.path.isdir(testDir):
                 try:
-                    return popen.Hub(testDir)
+                    return popen.Hub(testDir, self.debug)
                 except exceptions.VirtualBoxNotFound:
                     continue
             else:

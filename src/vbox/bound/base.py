@@ -1,7 +1,7 @@
 import collections
-import copy
 import functools
 import sys
+import threading
 
 _EMPTY_ = object()
 
@@ -26,55 +26,114 @@ class Caching(object):
         assert callable(backendFn)
         self._backendFn = backendFn
         self.version = 1
+        self._cacheLock = threading.Lock()
 
     def __call__(self, *args, **kwargs):
+        return self._callHandle(args, kwargs)
+
+    def _callHandle(self, args, kwargs):
         key = CallArgs(tuple(args), frozenset(kwargs.items()))
         try:
-            rv = self._cache[key]
+            value = self._cache[key]
         except KeyError:
-            self._cache[key] = self._backendFn(*args, **kwargs)
-            rv = self._cache[key]
+            with self._cacheLock:
+                # Trye reading cache once again - somebody might have changed it.
+                try:
+                    value = self._cache[key]
+                except KeyError:
+                    value = self._cache[key] = self._doRealCall(args, kwargs)
+        return value
 
-        return copy.deepcopy(rv)
-
+    def _doRealCall(self, args, kwargs):
+        return self._backendFn(*args, **kwargs)
 
     def refresh(self):
         self.version += 1
         if self.version >= MAX_VERSION:
             # Rollover!
             self.version = 1
+        with self._cacheLock:
+            self._cache.clear()
 
-        self._cache.clear()
+    def __repr__(self):
+        return "<{}({!r})>".format(self.__class__.__name__, self._backendFn)
 
-class Library(object):
+class Refreshable(object):
+    """An object that can uses caching and thus can be refreshed."""
+
+    refreshCallbacks = None
+
+    def __init__(self):
+        super(Refreshable, self).__init__()
+        self.refreshCallbacks = set()
+
+    def addRefreshCallback(self, cb):
+        self.refreshCallbacks.add(cb)
+
+    def refresh(self):
+        """Order a refresh all cached properties of this object."""
+        for cb in self.refreshCallbacks:
+            cb()
+
+class BoundCaching(Caching):
+    """A caching object that is bound to another object that it passes as 'self' to the function it is controlling."""
+
+    def __init__(self, backendFn, obj):
+        super(BoundCaching, self).__init__(backendFn)
+        self.boundTo = obj
+
+    def _callHandle(self, args, kwargs):
+        boundArgs = [self.boundTo]
+        boundArgs.extend(args)
+        return super(BoundCaching, self)._callHandle(boundArgs, kwargs)
+
+    def __repr__(self):
+        return "<{}({!r}.{!r})>".format(self.__class__.__name__, self.boundTo, self._backendFn)
+
+def refreshed(func):
+    """A bound caching function that is refreshed via 'refreshCallbacks' mechanism."""
+    name = "_refreshed_cache_for_{!r}".format(func.__name__)
+    def _wrapper(self, *args, **kwargs):
+        try:
+            return self.__dict__[name](*args, **kwargs)
+        except KeyError:
+            handler = BoundCaching(func, self)
+            self.addRefreshCallback(handler.refresh)
+            self.__dict__[name] = handler # This will effectivly prohibit successive '_wrapper' calls and will force for 'handler' to be called instead.
+            return handler(*args, **kwargs)
+    return functools.wraps(func)(_wrapper)
+
+def refreshedProperty(func):
+    handle = refreshed(func)
+    fn1 = lambda self: handle(self)
+    fn2 = functools.wraps(handle)(fn1)
+    return property(fn2)
+
+class Library(Refreshable):
     """An object factory."""
 
     entityCls = None # Entity class that this library generates.
-    root = objects = None
+    root = objects = cli = None
 
     def __init__(self, root):
         super(Library, self).__init__()
         self.root = root
+        self.cli = root.cli
         self.objects = []
 
     def listRegistered(self):
         """Return all objects of this type that VirtualBox has present in its registry."""
         raise NotImplementedError
 
+    def isRegistered(self, challange):
+        for el in self.listRegistered():
+            if el.is_(challange):
+                return True
+        return False
+
     def all(self):
         """Return all objects that are known of by now."""
         return iter(self.objects)
-
-    def pop(self, challange):
-        """Remove and return object described."""
-        for el in self.objects:
-            if el.is_(challange):
-                found = el
-                break
-        else:
-            raise IndexError(challange)
-        self.objects.remove(el)
-        return el
 
     def new(self, idx):
         if idx in self:
@@ -83,6 +142,25 @@ class Library(object):
         self.objects.append(rv)
         return rv
 
+    def get(self, challange):
+        for el in self.objects:
+            if el.is_(challange):
+                return el
+        else:
+            raise IndexError(challange)
+
+    def pop(self, challange):
+        """Remove and return object described."""
+        el = self.get(challange)
+        self.objects.remove(el)
+        return el
+
+    def getOrCreate(self, idx):
+        try:
+            return self.get(idx)
+        except IndexError:
+            return self.new(idx)
+
     def __contains__(self, challange):
         for el in self.objects:
             if el.is_(challange):
@@ -90,14 +168,12 @@ class Library(object):
         else:
             return False
 
-class Entity(object):
+class Entity(Refreshable):
     """Single entity (produced by the factory)."""
 
     def __init__(self, library, id):
         super(Entity, self).__init__()
-
         self.id = id
-
         self.library = library
         self.root = library.root
         self.cli = self.root.cli
@@ -105,10 +181,6 @@ class Entity(object):
     def is_(self, challange):
         """Return 'True' is this object is the one that is hiding under 'challange'."""
         return (challange is self) or (self.id == challange)
-
-
-    def refresh(self):
-        """Order a refresh all cached properties of this object."""
 
     def __repr__(self):
         return "<{} {!r} of {!r}>".format(self.__class__.__name__, self.id, self.library)
