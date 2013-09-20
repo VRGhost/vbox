@@ -47,7 +47,7 @@ class Caching(object):
     def _doRealCall(self, args, kwargs):
         return self._backendFn(*args, **kwargs)
 
-    def refresh(self):
+    def clearCache(self):
         self.version += 1
         if self.version >= MAX_VERSION:
             # Rollover!
@@ -65,15 +65,27 @@ class Refreshable(object):
 
     def __init__(self):
         super(Refreshable, self).__init__()
-        self.refreshCallbacks = set()
+        self.cacheClearCallbacks = set()
+        self.cacheUpdateCallbacks = set()
 
-    def addRefreshCallback(self, cb):
-        self.refreshCallbacks.add(cb)
+    def addCacheClearCallback(self, cb):
+        self.cacheClearCallbacks.add(cb)
 
-    def refresh(self):
+    def addCacheUpdateCallback(self, cb):
+        self.cacheUpdateCallbacks.add(cb)
+
+    def clearCache(self):
+        self.onCacheClear()
+
+    def onCacheClear(self):
         """Order a refresh all cached properties of this object."""
-        for cb in self.refreshCallbacks:
-            cb()
+        for cb in self.cacheClearCallbacks:
+            cb(self)
+
+    def onCacheUpdate(self):
+        """Order a refresh all cached properties of this object."""
+        for cb in self.cacheUpdateCallbacks:
+            cb(self)
 
 class BoundCaching(Caching):
     """A caching object that is bound to another object that it passes as 'self' to the function it is controlling."""
@@ -98,7 +110,7 @@ def refreshed(func):
             return self.__dict__[name](*args, **kwargs)
         except KeyError:
             handler = BoundCaching(func, self)
-            self.addRefreshCallback(handler.refresh)
+            self.addCacheClearCallback(lambda s: handler.clearCache())
             self.__dict__[name] = handler # This will effectivly prohibit successive '_wrapper' calls and will force for 'handler' to be called instead.
             return handler(*args, **kwargs)
     return functools.wraps(func)(_wrapper)
@@ -136,10 +148,16 @@ class Library(Refreshable):
         return iter(self.objects)
 
     def new(self, idx):
-        if idx in self:
-            raise KeyError("{!r} already exists".format(idx))
         rv = self.entityCls(self, idx)
-        self.objects.append(rv)
+        return self.dedup(rv)
+
+    def dedup(self, obj):
+        try:
+            # If 'get' call suceeds, there is an object that matches `obj`
+            rv = self.get(obj)
+        except IndexError:
+            self.objects.append(obj)
+            rv = obj
         return rv
 
     def get(self, challange):
@@ -191,5 +209,16 @@ def refreshing(func):
         try:
             return func(self, *args, **kwargs)
         finally:
-            self.refresh()
+            self.clearCache()
     return functools.wraps(func)(_wrapper)
+
+def refreshingLib(func):
+
+    @functools.wraps(func)
+    def _wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        finally:
+            self.library.clearCache()
+
+    return refreshing(_wrapper)

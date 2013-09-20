@@ -21,6 +21,7 @@ class VBoxManage(base.RealCommand):
             vm.ControlVM,
             vm.CreateVM,
             vm.ModifyVM,
+            vm.RegisterVM,
             vm.ShowVMInfo,
             vm.StartVM,
             vm.UnregisterVM,

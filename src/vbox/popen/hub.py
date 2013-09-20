@@ -57,7 +57,7 @@ class BoundDebugExecutable(BoundExecutable):
             if prevCmd == cmd:
                 log.info("Prev traceback:\n\n{}\n\n".format(prevTb))
                 log.info("Cur traceback:\n\n{}\n\n".format(tb))
-                raise AssertionError("Duplicate successive commands")
+                raise AssertionError("Duplicate successive commands: {}".format(cmd))
         self.prev = (cmd, tb)
         log.debug("Executing {} {}".format(self.executable, cmd))
         return super(BoundDebugExecutable, self).__call__(cmd)

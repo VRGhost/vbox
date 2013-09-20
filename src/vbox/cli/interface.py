@@ -2,9 +2,11 @@ import threading
 
 from .vboxmanage import VBoxManage
 
-from . import util
+from . import util, exceptions
 
 class CommandLineInterface(object):
+
+    exceptions = exceptions
     
     def __init__(self, popen):
         super(CommandLineInterface, self).__init__()

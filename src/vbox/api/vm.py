@@ -1,9 +1,13 @@
-from . import base, props
+from . import (
+    base,
+    props,
+    storageController,
+)
 
 def modify(name):
     return {
-        "fget": lambda src: src.info.get(name),
-        "fset": lambda self, value: self._source.modify(**{name: value}),
+        "fget": lambda self: self.source.info.get(name),
+        "fset": lambda self, value: self.source.modify(**{name: value}),
     }
 
 class VM(base.Entity):
@@ -18,6 +22,21 @@ class VM(base.Entity):
     videoMemory = props.SourceInt("vram")
 
     destroy = lambda s: s._source.destroy()
+    registered = props.SourceProperty(
+        fget=lambda s: s.library.isRegistered(s),
+        fset=lambda s, v: s.source.register() if v else s.source.unregister(),
+        getDepends=lambda s: (s, s.library),
+    )
+
+    storageControllers = None
+
+    def __init__(self, *args, **kwargs):
+        super(VM, self).__init__(*args, **kwargs)
+        self.storageControllers = storageController.Library(self)
+
+    def destroy(self):
+        self.registered = True
+        self.source.destroy()
 
 class Library(base.Library):
 
@@ -25,7 +44,7 @@ class Library(base.Library):
 
     def new(self, name):
         """Create new virtual machine with name `name`."""
-        src = self._source.new(name)
-        if not self._source.isRegistered(src):
+        src = self.source.new(name)
+        if not self.source.isRegistered(src):
             src.create(register=True)
-        return self.entityCls(src)
+        return self.entityCls(src, self)

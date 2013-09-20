@@ -1,6 +1,7 @@
 from . import base
 
 refreshing = base.refreshing
+refreshingLib = base.refreshingLib
 
 class VM(base.Entity):
 
@@ -8,6 +9,7 @@ class VM(base.Entity):
 
     def __init__(self, *args, **kwargs):
         super(VM, self).__init__(*args, **kwargs)
+        self.addCacheUpdateCallback(self._bindImmutableData)
 
     @refreshing
     def create(self, **kwargs):
@@ -16,13 +18,20 @@ class VM(base.Entity):
         }
         realKw.update(kwargs)
         self.cli.manage.createVM(name=self.id, **realKw)
+        if realKw["register"]:
+            self.library.clearCache()
 
-    @refreshing
+    @refreshingLib
     def unregister(self, delete=True):
         self.cli.manage.unregisterVM(self.id, delete=delete)
         self.library.pop(self)
 
-    @refreshing
+    @refreshingLib
+    def register(self):
+        if self._configFile:
+            self.cli.manage.registerVM(self._configFile)
+
+    @refreshingLib
     def destroy(self):
         self.unregister(True)
 
@@ -45,6 +54,15 @@ class VM(base.Entity):
             pass
 
         return False
+
+    _configFile = None
+    def _bindImmutableData(self, subj):
+        assert subj is self
+        cfg = self.info.get("CfgFile", None)
+        if None not in (self._configFile, cfg):
+            assert self._configFile == cfg, (self._configFile, cfg)
+        else:
+            self._configFile = cfg
 
 class Library(base.Library):
 

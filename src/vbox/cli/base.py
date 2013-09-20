@@ -8,6 +8,7 @@ from . import (
 
 class BaseCmd(object):
 
+    exceptions = exceptions
     prefix = ()
     # Callable object that accepts (args, output) arguments as input and returns parsed structure.
     parser = util.parsers.Dummy()
@@ -44,7 +45,7 @@ class BaseCmd(object):
 
     def _checkErrOutput(self, args, cmd, rc, out):
         if not self.outCheck(args, rc,  out):
-            raise exceptions.CalledProcessError(cmd, rc, out)
+            raise self.exceptions.CalledProcessError(cmd, rc, out)
 
     def _exec(self, cmd):
         """Execute command line command provided."""

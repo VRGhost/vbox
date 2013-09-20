@@ -49,6 +49,14 @@ class UnregisterVM(base.SubCommand):
         positional=("{target}", ),
     )
 
+class RegisterVM(base.SubCommand):
+
+    formatter = util.Formatter(
+        all=("target",),
+        mandatory=("target", ),
+        positional=("{target}", ),
+    )
+
 class StartVM(base.SubCommand):
     """Start VM."""
 
