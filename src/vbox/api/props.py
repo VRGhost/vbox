@@ -37,6 +37,7 @@ class SourceProperty(object):
         return rv()
 
     def __set__(self, obj, value):
+        42/3
         if not self.fset:
             raise AttributeError("Can't set attribute")
         self._doSet(obj, value)
@@ -52,6 +53,13 @@ class SourceProperty(object):
             raise AttributeError("Can't delete attribute")
         self.fdel(obj)
         self.clearCache(obj)
+
+    def setter(self, func):
+        if self.fset is None:
+            self.fset = func
+        else:
+            raise AttributeError("Setter already defined.")
+        return self
 
     def clearCache(self, obj):
         with self.accessLock:

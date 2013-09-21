@@ -3,15 +3,12 @@ import glob
 
 from . import (
     base,
-    exceptions,
 )
 
 refreshing = base.refreshing
 refreshingLib = base.refreshingLib
 
 class HDD(base.Entity):
-
-    exceptions = exceptions
 
     info = base.refreshedProperty(lambda s: s.cli.manage.showHdInfo(s.id))
 
@@ -46,7 +43,6 @@ class HDD(base.Entity):
             match = glob.glob("{}.*".format(self.id))
             if match:
                 self.id = match[0]
-
 
 class Library(base.Library):
 

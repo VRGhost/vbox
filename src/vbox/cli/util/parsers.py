@@ -1,6 +1,70 @@
 """Utility functions."""
-
 import re
+
+class MappingList(object):
+
+    def __init__(self):
+        super(MappingList, self).__init__()
+        self._pairs = []
+        self._index = {}
+        self._multiple = set()
+
+    def append(self, key, value):
+        self._pairs.append((key, value))
+        _index = self._index
+        if key in _index:
+            self._multiple.add(key)
+            _index.pop(key)
+        else:
+            _index[key] = (len(self._pairs)-1, value)
+
+    def __getitem__(self, key):
+        try:
+            return self._index[key][1]
+        except KeyError:
+            if key in self._multiple:
+                raise IndexError("Multiple values for {!r}".format(key))
+            else:
+                raise KeyError(key)
+
+    def __contains__(self, key):
+        return (key in self._index) or (key in self._multiple)
+
+    def __len__(self):
+        return len(self._pairs)
+
+    def get(self, key, default=None):
+        try:
+            rv = self._index.get(key, default)
+        except KeyError:
+            if key in self._multiple:
+                raise IndexError("Multiple values for {!r}".format(key))
+            else:
+                raise KeyError(key)
+        if rv is default:
+            return rv
+        else:
+            return rv[1]
+
+    def index(self, key):
+        rv = self._index.get(key)
+        if rv is not None:
+            return rv[0]
+        else:
+            for (idx, (pairKey, value)) in enumerate(self._pairs):
+                if pairKey == key:
+                    return idx
+
+        raise ValueError("{!r} is not in {}".format(key, self.__class__.__name__))
+
+    def getByIndex(self, idx):
+        return self._pairs[idx]
+
+    def items(self):
+        return tuple(self._pairs)
+
+    def iteritems(self):
+        return iter(self._pairs)
 
 class Dummy(object):
     """Base dummy parser.
@@ -69,12 +133,12 @@ class Dicts(Items):
         return tuple(self._parseDicts(output))
 
     def _parseDicts(self, output):
-        out = {}
+        out = MappingList()
         for (key, value) in self._parseItems(output):
             if key in out:
                 yield out
-                out = {}
-            out[key] = value
+                out = MappingList()
+            out.append(key, value)
         if out:
             yield out
 
@@ -85,42 +149,7 @@ class Dict(Items):
         return self._toDict(output)
 
     def _toDict(self, output):
-        out = {}
+        out = MappingList()
         for (key, value) in self._parseItems(output):
-            if key in out:
-                raise Exception("Duplicate value for {!r} in {!r}".format(key, output))
-            out[key] = value
+            out.append(key, value)
         return out
-
-
-# def iterMatches(pattern, txt):
-#     regex = re.compile(pattern)
-#     for line in txt.splitlines():
-#         match = regex.match(line)
-#         if match:
-#             yield match.groups()
-
-# def iterParams(txt):
-#     for line in txt.splitlines():
-#         vals = splitRecord(line, ':')
-#         if vals:
-#             yield vals
-
-# def parseMachineReadableFmt(txt):
-#     for line in txt.splitlines():
-#         vals = splitRecord(line, '=')
-#         if vals:
-#             yield vals
-
-
-def toMBytes(label):
-    if label is None:
-        return None
-    (num, typ) = label.split()
-    typ = typ.lower()
-    num = int(num)
-    if typ == "mbytes":
-        rv = num
-    else:
-        raise Exception("Unable to parse label {!r}".format(label))
-    return rv

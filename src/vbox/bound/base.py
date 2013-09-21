@@ -3,6 +3,8 @@ import functools
 import sys
 import threading
 
+from . import exceptions
+
 _EMPTY_ = object()
 
 CallArgs = collections.namedtuple("CallArgs", ["args", "kwargs"])
@@ -87,6 +89,9 @@ class Refreshable(object):
         for cb in self.cacheUpdateCallbacks:
             cb(self)
 
+    def __repr__(self):
+        return "<{}.{} {:X}>".format(self.__module__, self.__class__.__name__, id(self))
+
 class BoundCaching(Caching):
     """A caching object that is bound to another object that it passes as 'self' to the function it is controlling."""
 
@@ -126,6 +131,7 @@ class Library(Refreshable):
 
     entityCls = None # Entity class that this library generates.
     root = objects = cli = None
+    exceptions = exceptions
 
     def __init__(self, root):
         super(Library, self).__init__()
@@ -188,6 +194,7 @@ class Library(Refreshable):
 
 class Entity(Refreshable):
     """Single entity (produced by the factory)."""
+    exceptions = exceptions
 
     def __init__(self, library, id):
         super(Entity, self).__init__()
@@ -198,10 +205,21 @@ class Entity(Refreshable):
 
     def is_(self, challange):
         """Return 'True' is this object is the one that is hiding under 'challange'."""
-        return (challange is self) or (self.id == challange)
+        if (challange is self) or (self.id == challange):
+            return True
+        try:
+            id2 = challange.id
+        except AttributeError:
+            pass
+        else:
+            if self.id == id2:
+                return True
+
+        return False
+
 
     def __repr__(self):
-        return "<{} {!r} of {!r}>".format(self.__class__.__name__, self.id, self.library)
+        return "<{}.{} {!r} of {!r}>".format(self.__module__, self.__class__.__name__, self.id, self.library)
 
 def refreshing(func):
     """function upon competion of which 'refresh' for current object will be called."""

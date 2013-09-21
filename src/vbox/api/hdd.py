@@ -13,6 +13,7 @@ class HDD(base.Entity):
     location = props.SourceStr(lambda s: s.source.info.get("Location"))
     size = props.HumanReadableFileSize(lambda s: s.source.info.get("Current size on disk"))
     maxSize = props.HumanReadableFileSize(lambda s: s.source.info.get("Logical size"))
+    accessible = props.SourceProperty(lambda s: s.source.info.get("Accessible") == "yes")
 
     registered = props.SourceProperty(
         fget=lambda s: s.library.isRegistered(s),
@@ -26,18 +27,23 @@ class HDD(base.Entity):
         else:
             self.source.unlink()
 
+    def getStorageAttachKwargs(self):
+        return {
+            "type": "hdd",
+            "medium": self.location,
+        }
+
 class Library(base.Library):
 
     entityCls = HDD
 
-    def new(self, filename, size):
-        """Create new virtual machine with name `name`."""
-        src = self._source.new(size=size)
-        if not self._source.isRegistered(src):
-            src.create(register=True)
-        return self.entityCls(src)
+    def fromFile(self, filename):
+        if not os.path.isfile(filename):
+            raise self.exceptions.MissingFile(filename)
+        src = self.source.new(filename)
+        return self.entityCls(src, self)
 
-    def createNew(self, size, targetDir=None, basename="unnamed_hdd"):
+    def create(self, size, targetDir=None, basename="unnamed_hdd"):
         if not targetDir:
             targetDir = self.interface.host.defaultVmDir
 

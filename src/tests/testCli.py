@@ -23,12 +23,11 @@ class TestCLI(unittest.TestCase):
             handle()
 
     def test_create_hd_and_info(self):
-        name = os.path.realpath("{}_test_create_hd.vdi".format(self.__class__.__name__))
+        name = os.path.realpath("{}_test_create_hd_.vdi".format(self.__class__.__name__))
 
         self.cli.manage.createHD(name, size=512)
         self.assertTrue(os.path.isfile(name))
         info = self.cli.manage.showHdInfo(name)
-        self.assertIsInstance(info, dict)
         self.assertTrue(info)
 
         # createHd also registers new hdd in the virtualbox registry.

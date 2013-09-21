@@ -1,7 +1,10 @@
 import threading
 
+from . import exceptions
+
 class SourceObjectProxy(object):
 
+    exceptions = exceptions
     _source = _sourceDependants = None
     source = property(lambda s: s._source)
 
@@ -35,6 +38,16 @@ class SourceObjectProxy(object):
 
     def registerTrail(self, dep):
         self.addCacheClearCallback(dep.clearCache)
+
+    def __eq__(self, other):
+        try:
+            src2 = other.source
+        except AttributeError:
+            return False
+        return self.source.is_(src2)
+
+    def __repr__(self):
+        return "<{}.{} 0x{:X} {!r}>".format(self.__module__, self.__class__.__name__, id(self), self.source)
 
 class ProxyRefreshTrail(object):
     """Function that caches its result and resets its cache when any of source objects are refreshed.
@@ -86,6 +99,7 @@ class Entity(SourceObjectProxy):
     def __init__(self, sourceObject, library):
         super(Entity, self).__init__(sourceObject)
         self.library = library
+        self.interface = library.interface
 
 class Library(SourceObjectProxy):
 
@@ -104,3 +118,4 @@ class SubEntity(SourceObjectProxy):
     def __init__(self, parent):
         super(SubEntity, self).__init__(parent.source)
         self.parent = parent
+        self.interface = parent.interface

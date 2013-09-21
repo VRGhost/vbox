@@ -1,8 +1,10 @@
 from . import (
+    dvd,
+    exceptions,
+    floppy,
     hdd,
     host,
     vm,
-    exceptions,
 )
 
 class VirtualBox(object):
@@ -16,3 +18,5 @@ class VirtualBox(object):
         self.host = host.Host(self)
         self.vms = vm.Library(self)
         self.hdds = hdd.Library(self)
+        self.dvds = dvd.Library(self)
+        self.floppies = floppy.Library(self)

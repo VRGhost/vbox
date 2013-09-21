@@ -35,6 +35,8 @@ class VM(base.Entity):
     def destroy(self):
         self.unregister(True)
 
+    storageCtl = refreshing(lambda s, **kw: s.cli.manage.storageCtl(s.id, **kw))
+    storageAttach = refreshing(lambda s, **kw: s.cli.manage.storageAttach(s.id, **kw))
     modify = refreshing(lambda s, **kw: s.cli.manage.modifyVM(s.id, **kw))
 
     start = refreshing(lambda s, **kw: s.cli.manage.startVM(s.id, **kw))

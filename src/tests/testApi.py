@@ -1,9 +1,22 @@
+import functools
 import os
 
 import logging
 import unittest
 
 import time
+
+FD_IMG=os.path.realpath(os.path.join(os.path.dirname(__file__), "fd.img"))
+
+def with_new_vm(func):
+    @functools.wraps(func)
+    def _wrapper(self):
+        name = "{}_{}".format(self.__class__.__name__, func.__name__)
+        vm = self.api.vms.new(name)
+        rv = func(self, vm)
+        vm.destroy()
+        return rv
+    return _wrapper
 
 class TestBound(unittest.TestCase):
 
@@ -12,10 +25,8 @@ class TestBound(unittest.TestCase):
         logging.basicConfig(level=logging.DEBUG)
         self.api = vbox.VBox(['C:\Program Files\Oracle\VirtualBox'], debug=True).api
 
-    def test_create_vm(self):
-        api = self.api
-        name = "{}_test_create_vms".format(self.__class__.__name__)
-        vm = api.vms.new(name)
+    @with_new_vm
+    def test_create_vm(self, vm):
         oldMem = vm.memory
         oldAcpi = vm.acpi
         self.assertTrue(vm.registered)
@@ -28,26 +39,90 @@ class TestBound(unittest.TestCase):
         self.assertEqual(vm.memory, oldMem * 2)
         self.assertEqual(vm.acpi, not oldAcpi)
 
-        vm.destroy()
-
     def test_hdd(self):
         api = self.api
-        hdd = self.api.hdds.createNew(size=1024)
+        hdd = self.api.hdds.create(size=1024)
         self.assertTrue(hdd.UUID)
         hdd.destroy()
 
-    def testControllerAccess(self):
-        vm = self.api.vms.new("{}_testControllerAccess".format(self.__class__.__name__))
-        print vm.source.info
-        print vm.storageControllers.ide
-        self.assertTrue(vm)
-        self.assertTrue(vm.ide)
-        self.assertTrue(vm.ide.findEmptySlot())
-        self.assertTrue(vm.sata)
-        self.assertTrue(vm.sata.findEmptySlot())
-        self.assertTrue(vm.floppy)
+    @with_new_vm
+    def testChangeBootOrder(self, vm):
+        old = tuple(vm.bootOrder)
+        rev = tuple(reversed(old))
+        vm.bootOrder = rev
+        self.assertEqual(vm.bootOrder, rev)
+
+    @with_new_vm
+    def testControllerAccess(self, vm):
+        controllers = vm.storageControllers
+        controllers.ensureExist("ide")
+        controllers.ensureExist("sata")
+        controllers.ensureExist("floppy")
+
+        self.assertTrue(controllers.ide)
+        self.assertTrue(controllers.ide.findEmptySlot())
+        self.assertTrue(controllers.sata)
+        self.assertTrue(controllers.sata.findEmptySlot())
+        self.assertTrue(controllers.floppy)
         # destroy test
-        vm.floppy.destroy()
-        self.assertTrue(vm.floppy.findEmptySlot())
-        1/0
-        # vm.destroy()
+        self.assertTrue(controllers.floppy.findEmptySlot())
+
+    @with_new_vm
+    def testHddAttach(self, vm):
+        vm.storageControllers.ensureExist("ide")
+        hdd = self.api.hdds.create(size=42)
+
+        vm.storageControllers.ide.attach(hdd)
+        slot = vm.storageControllers.ide.findSlotOf(hdd)
+        hdd2 = vm.storageControllers.ide.slots[slot].medium
+        self.assertEqual(hdd, hdd2)
+
+
+    @with_new_vm
+    def testEmptyDvdAttach(self, vm):
+        img = self.api.dvds.empty
+        vm.storageControllers.ensureExist("sata")
+
+        vm.storageControllers.sata.attach(img)
+        slot = vm.storageControllers.sata.findSlotOf(img)
+        img2 = vm.storageControllers.sata.getMedia(slot)
+        assert vm.storageControllers.sata.slots[slot].isEjectable in (True, False)
+        self.assertEqual(img, img2)
+
+    @with_new_vm
+    def testEmptyFloppyAttach(self, vm):
+        vm.storageControllers.ensureExist("floppy")
+        img = self.api.floppies.empty
+        controller = vm.storageControllers.floppy
+
+        controller.attach(img)
+        slot = controller.findSlotOf(img)
+        img2 = controller.getMedia(slot)
+        self.assertEqual(img, img2)
+
+    @with_new_vm
+    def testFdBoot(self, vm):
+        img = self.api.floppies.fromFile(FD_IMG)
+        vm.storageControllers.ensureExist("floppy")
+        controller = vm.storageControllers.floppy
+
+        controller.attach(img, bootable=True)
+        self.assertFalse(vm.state.running)
+        oldTime = vm.changeTime
+        vm.state.start()
+        self.assertTrue(vm.state.running)
+        vm.wait(timeout=2)
+        # this FD image simply stays turned on.
+        self.assertTrue(vm.state.running)
+        vm.state.pause()
+        self.assertFalse(vm.state.running)
+        self.assertTrue(vm.state.paused)
+        vm.state.resume()
+        self.assertTrue(vm.state.running)
+        # Reset
+        vm.state.reset()
+        self.assertTrue(vm.state.running)
+        vm.state.powerOff()
+        self.assertGreater(vm.changeTime, oldTime)
+        self.assertFalse(vm.state.running)
+        vm.destroy()
