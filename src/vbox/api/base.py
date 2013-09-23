@@ -1,5 +1,6 @@
 import threading
 
+from ..exceptions import ExceptionCatcher
 from . import exceptions
 
 class SourceObjectProxy(object):
@@ -12,7 +13,7 @@ class SourceObjectProxy(object):
         super(SourceObjectProxy, self).__init__()
         self._cacheClearDependants = set()
         self._sourceCacheUpdateDependants = set()
-        self._source = sourceObject
+        self._source = ExceptionCatcher(sourceObject, self._onSourceException)
         self.source.addCacheClearCallback(self._onSourceCacheClear)
         self.source.addCacheUpdateCallback(self._onSourceCacheUpdate)
 
@@ -23,18 +24,18 @@ class SourceObjectProxy(object):
         self._sourceCacheUpdateDependants.add(func)
 
     def clearCache(self, src):
-        assert src == self.source
         for el in self._cacheClearDependants:
             el(self)
 
     def _onSourceCacheClear(self, src):
-        assert src == self.source
         self.clearCache(src)
 
     def _onSourceCacheUpdate(self, src):
-        assert src == self.source
         for el in self._sourceDependants:
             el.cacheUpdated(src)
+
+    def _onSourceException(self, exc):
+        """Called when source call raises an exception."""
 
     def registerTrail(self, dep):
         self.addCacheClearCallback(dep.clearCache)
@@ -94,7 +95,7 @@ class ProxyRefreshTrail(object):
         return "<{}({!r})>".format(self.__class__.__name__, self._func)
 
 class Entity(SourceObjectProxy):
-    
+
 
     def __init__(self, sourceObject, library):
         super(Entity, self).__init__(sourceObject)

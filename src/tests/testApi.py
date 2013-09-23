@@ -6,8 +6,6 @@ import unittest
 
 import time
 
-FD_IMG=os.path.realpath(os.path.join(os.path.dirname(__file__), "fd.img"))
-
 def with_new_vm(func):
     @functools.wraps(func)
     def _wrapper(self):
@@ -99,30 +97,3 @@ class TestBound(unittest.TestCase):
         slot = controller.findSlotOf(img)
         img2 = controller.getMedia(slot)
         self.assertEqual(img, img2)
-
-    @with_new_vm
-    def testFdBoot(self, vm):
-        img = self.api.floppies.fromFile(FD_IMG)
-        vm.storageControllers.ensureExist("floppy")
-        controller = vm.storageControllers.floppy
-
-        controller.attach(img, bootable=True)
-        self.assertFalse(vm.state.running)
-        oldTime = vm.changeTime
-        vm.state.start()
-        self.assertTrue(vm.state.running)
-        vm.wait(timeout=2)
-        # this FD image simply stays turned on.
-        self.assertTrue(vm.state.running)
-        vm.state.pause()
-        self.assertFalse(vm.state.running)
-        self.assertTrue(vm.state.paused)
-        vm.state.resume()
-        self.assertTrue(vm.state.running)
-        # Reset
-        vm.state.reset()
-        self.assertTrue(vm.state.running)
-        vm.state.powerOff()
-        self.assertGreater(vm.changeTime, oldTime)
-        self.assertFalse(vm.state.running)
-        vm.destroy()

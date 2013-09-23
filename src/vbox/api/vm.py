@@ -115,7 +115,7 @@ class VM(base.Entity):
                 else:
                     value = new
                 callKw["boot{}".format(idx)] = value
-        
+
         if callKw:
             self.source.modify(**callKw)
 
@@ -133,6 +133,10 @@ class VM(base.Entity):
             self.source.clearCache()
 
         return self.state.mutable
+
+    def _onSourceException(self, exc):
+        if isinstance(exc, self.source.exceptions.VmNotFound):
+            raise self.exceptions.VmNotFound()
 
 class Library(base.Library):
 

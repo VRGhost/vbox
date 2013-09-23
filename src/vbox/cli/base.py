@@ -1,9 +1,16 @@
 import collections
 import os
+import re
 
 from . import (
     util,
     exceptions,
+)
+
+ERR_MSG_PARSE_RE = re.compile('\n'.join([
+    r"^([^:]+): error: (?P<msg>.*)$",
+    r"^(\1): error: Details: code (?P<str_code>\w+) \(0x(?P<hex_code>[0-9a-f]+)\)",
+    ]), re.MULTILINE | re.IGNORECASE
 )
 
 class BaseCmd(object):
@@ -45,7 +52,16 @@ class BaseCmd(object):
 
     def _checkErrOutput(self, args, cmd, rc, out):
         if not self.outCheck(args, rc,  out):
-            raise self.exceptions.CalledProcessError(cmd, rc, out)
+            match = ERR_MSG_PARSE_RE.search(out)
+            if match:
+                raise self.exceptions.ParsedVboxError(
+                    cmd, rc, out,
+                    errorName=match.group("str_code").strip(),
+                    errorCode=int(match.group("hex_code"), 16),
+                    message=match.group("msg").strip(),
+                )
+            else:
+                raise self.exceptions.CalledProcessError(cmd, rc, out)
 
     def _exec(self, cmd):
         """Execute command line command provided."""

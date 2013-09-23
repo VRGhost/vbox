@@ -3,6 +3,7 @@ import functools
 import sys
 import threading
 
+from ..exceptions import ExceptionCatcher
 from . import exceptions
 
 _EMPTY_ = object()
@@ -60,38 +61,6 @@ class Caching(object):
     def __repr__(self):
         return "<{}({!r})>".format(self.__class__.__name__, self._backendFn)
 
-class Refreshable(object):
-    """An object that can uses caching and thus can be refreshed."""
-
-    refreshCallbacks = None
-
-    def __init__(self):
-        super(Refreshable, self).__init__()
-        self.cacheClearCallbacks = set()
-        self.cacheUpdateCallbacks = set()
-
-    def addCacheClearCallback(self, cb):
-        self.cacheClearCallbacks.add(cb)
-
-    def addCacheUpdateCallback(self, cb):
-        self.cacheUpdateCallbacks.add(cb)
-
-    def clearCache(self):
-        self.onCacheClear()
-
-    def onCacheClear(self):
-        """Order a refresh all cached properties of this object."""
-        for cb in self.cacheClearCallbacks:
-            cb(self)
-
-    def onCacheUpdate(self):
-        """Order a refresh all cached properties of this object."""
-        for cb in self.cacheUpdateCallbacks:
-            cb(self)
-
-    def __repr__(self):
-        return "<{}.{} {:X}>".format(self.__module__, self.__class__.__name__, id(self))
-
 class BoundCaching(Caching):
     """A caching object that is bound to another object that it passes as 'self' to the function it is controlling."""
 
@@ -126,7 +95,56 @@ def refreshedProperty(func):
     fn2 = functools.wraps(handle)(fn1)
     return property(fn2)
 
-class Library(Refreshable):
+class Refreshable(object):
+    """An object that can uses caching and thus can be refreshed."""
+
+    refreshCallbacks = None
+
+    def __init__(self):
+        super(Refreshable, self).__init__()
+        self.cacheClearCallbacks = set()
+        self.cacheUpdateCallbacks = set()
+
+    def addCacheClearCallback(self, cb):
+        self.cacheClearCallbacks.add(cb)
+
+    def addCacheUpdateCallback(self, cb):
+        self.cacheUpdateCallbacks.add(cb)
+
+    def clearCache(self):
+        self.onCacheClear()
+
+    def onCacheClear(self):
+        """Order a refresh all cached properties of this object."""
+        for cb in self.cacheClearCallbacks:
+            cb(self)
+
+    def onCacheUpdate(self):
+        """Order a refresh all cached properties of this object."""
+        for cb in self.cacheUpdateCallbacks:
+            cb(self)
+
+    def __repr__(self):
+        return "<{}.{} {:X}>".format(self.__module__, self.__class__.__name__, id(self))
+
+
+class CliAccessor(Refreshable):
+
+    def __init__(self, cli):
+        super(CliAccessor, self).__init__()
+        self.cli = ExceptionCatcher(cli, self.onCliCallError)
+
+    def cliCall(self, func, *args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except self.cli.exceptions.CalledProcessError as err:
+            self.onCliCallError(err)
+
+    def onCliCallError(self, err):
+        raise
+
+
+class Library(CliAccessor):
     """An object factory."""
 
     entityCls = None # Entity class that this library generates.
@@ -134,9 +152,8 @@ class Library(Refreshable):
     exceptions = exceptions
 
     def __init__(self, root):
-        super(Library, self).__init__()
+        super(Library, self).__init__(root.cli)
         self.root = root
-        self.cli = root.cli
         self.objects = []
 
     def listRegistered(self):
@@ -192,16 +209,15 @@ class Library(Refreshable):
         else:
             return False
 
-class Entity(Refreshable):
+class Entity(CliAccessor):
     """Single entity (produced by the factory)."""
     exceptions = exceptions
 
     def __init__(self, library, id):
-        super(Entity, self).__init__()
+        super(Entity, self).__init__(library.root.cli)
         self.id = id
         self.library = library
         self.root = library.root
-        self.cli = self.root.cli
 
     def is_(self, challange):
         """Return 'True' is this object is the one that is hiding under 'challange'."""

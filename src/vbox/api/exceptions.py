@@ -1,4 +1,6 @@
-class ApiError(Exception):
+from .. import exceptions
+
+class ApiError(exceptions.BaseException):
     pass
 
 class ControllerError(ApiError):
@@ -11,4 +13,7 @@ class SlotBusy(ControllerError):
     pass
 
 class MissingFile(ApiError):
+    pass
+
+class VmNotFound(ApiError):
     pass

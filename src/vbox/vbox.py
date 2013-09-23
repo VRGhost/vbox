@@ -6,6 +6,7 @@ from . import (
     api,
     bound,
     cli,
+    config,
     exceptions,
     popen,
 )
@@ -32,6 +33,7 @@ class VBox(object):
         self.cli = cli.CommandLineInterface(self.popen)
         self.bound = bound.VirtualBox(self.cli)
         self.api = api.VirtualBox(self.bound)
+        self.config = config.VirtualBox(self.api)
         # end layer assembly
         self.installRoot = self.popen.root
 
@@ -48,6 +50,10 @@ class VBox(object):
             # No 'return' suceeded.
             raise exceptions.VirtualBoxNotFound(
                 "None of the directories {!r} contains virtualbox installation.".format(dirs))
+
+    @classmethod
+    def fromDict(cls, data):
+        return cls(**data)
 
     def __repr__(self):
         return "<{} installRoot={!r}>".format(self.__class__.__name__, self.installRoot)

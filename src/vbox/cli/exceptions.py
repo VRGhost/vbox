@@ -10,3 +10,16 @@ class CalledProcessError(exceptions.BaseException):
         self.returncode = rc
         self.cmd = tuple(cmd)
         self.output = output
+
+class ParsedVboxError(CalledProcessError):
+
+    def __init__(self, cmd, rc, output, errorName, errorCode, message):
+        super(CalledProcessError, self).__init__(
+            "Error calling {!r}: {!r} (0x{:X}):: {}".format(cmd, errorName, errorCode, message)
+        )
+        self.returncode = rc
+        self.cmd = tuple(cmd)
+        self.output = output
+        self.errorName = errorName
+        self.errorCode = errorCode
+        self.msg = message

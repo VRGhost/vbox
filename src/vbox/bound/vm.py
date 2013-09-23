@@ -1,4 +1,10 @@
-from . import base
+import functools
+from functools import partial
+
+from . import (
+    base,
+    exceptions,
+)
 
 refreshing = base.refreshing
 refreshingLib = base.refreshingLib
@@ -45,6 +51,13 @@ class VM(base.Entity):
     reset = refreshing(lambda s: s.cli.manage.controlVM.reset(s.id))
     resume = refreshing(lambda s: s.cli.manage.controlVM.resume(s.id))
     pause = refreshing(lambda s: s.cli.manage.controlVM.pause(s.id))
+
+    def onCliCallError(self, err):
+        if isinstance(err, self.cli.exceptions.ParsedVboxError) \
+        and ("NOT_FOUND" in err.errorName.upper()) \
+        and (self.id in err.msg):
+            raise exceptions.VmNotFound(self.id)
+
 
     def is_(self, challange):
         if super(VM, self).is_(challange):
