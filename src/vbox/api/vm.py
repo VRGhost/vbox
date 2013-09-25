@@ -53,7 +53,7 @@ class VM(base.Entity):
     cpuCount = props.SourceInt("cpus")
     cpuExecutionCap = props.SourceInt("cpuexecutioncap")
     memory = props.SourceInt(**modify("memory"))
-    videoMemory = props.SourceInt("vram")
+    videoMemory = props.SourceInt(**modify("vram"))
 
     destroy = lambda s: s._source.destroy()
     registered = props.SourceProperty(
@@ -142,7 +142,24 @@ class Library(base.Library):
 
     entityCls = VM
 
-    def new(self, name):
+    def get(self, name):
+        srcObj = self.source.new(name)
+        if srcObj.exists():
+            rv = self.entityCls(srcObj, self)
+        else:
+            rv = None
+        return rv
+
+    def create(self, name):
+        srcObj = self.source.new(name)
+        if srcObj.exists():
+            raise self.exceptions.VmAlreadyExists(name)
+        else:
+            srcObj.create(register=True)
+            rv = self.entityCls(srcObj, self)
+        return rv
+
+    def getOrCreate(self, name):
         """Create new virtual machine with name `name`."""
         src = self.source.new(name)
         if not self.source.isRegistered(src):

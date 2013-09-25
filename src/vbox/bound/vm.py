@@ -17,6 +17,9 @@ class VM(base.Entity):
         super(VM, self).__init__(*args, **kwargs)
         self.addCacheUpdateCallback(self._bindImmutableData)
 
+    def exists(self):
+        return bool(self.info)
+
     @refreshing
     def create(self, **kwargs):
         realKw = {

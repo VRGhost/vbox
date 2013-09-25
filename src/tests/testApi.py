@@ -10,7 +10,7 @@ def with_new_vm(func):
     @functools.wraps(func)
     def _wrapper(self):
         name = "{}_{}".format(self.__class__.__name__, func.__name__)
-        vm = self.api.vms.new(name)
+        vm = self.api.vms.getOrCreate(name)
         rv = func(self, vm)
         vm.destroy()
         return rv

@@ -37,7 +37,6 @@ class SourceProperty(object):
         return rv()
 
     def __set__(self, obj, value):
-        42/3
         if not self.fset:
             raise AttributeError("Can't set attribute")
         self._doSet(obj, value)

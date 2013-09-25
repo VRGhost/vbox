@@ -6,6 +6,7 @@ import unittest
 
 import time
 
+FD_IMG=os.path.realpath(os.path.join(os.path.dirname(__file__), "fd.img"))
 
 class TestConfig(unittest.TestCase):
     """This helps to test VM creation out of dict configs."""
@@ -20,15 +21,29 @@ class TestConfig(unittest.TestCase):
 
 
     def testBasicVm(self):
-        vm = self.vbox.config.VM.fromDict({
+        cfg = {
             "name": "foo",
             "osType": "Windows95",
             "memory": 12,
             "accelerate3d": False,
             "videoMemory": 12,
-            "storage": {
-                "hdd": {"size": 42, "controller": "sata"},
-                "dvd": {"controller": "ide"},
-                "fdd": {},
-            }
-        }).ensure()
+            "media": {
+                "ide": {
+                    "targets": [
+                        {"type": "hdd", "size": 42},
+                        {"type": "dvd"},
+                    ],
+                },
+                "floppy": {
+                    "bootable": True,
+                    "targets": [
+                        {
+                            "target": FD_IMG
+                        },
+                    ],
+                },
+                "sata": {},
+            },
+        }
+        vm = self.vbox.config.VM.fromDict(cfg, force=1)
+        vm.destroy()

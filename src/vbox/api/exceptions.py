@@ -17,3 +17,6 @@ class MissingFile(ApiError):
 
 class VmNotFound(ApiError):
     pass
+
+class VmAlreadyExists(ApiError):
+    pass
