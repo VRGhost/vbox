@@ -11,8 +11,8 @@ class HDD(base.Entity):
 
     UUID = props.SourceStr(lambda s: s.source.info.get("UUID"))
     location = props.SourceStr(lambda s: s.source.info.get("Location"))
-    size = props.HumanReadableFileSize(lambda s: s.source.info.get("Current size on disk"))
-    maxSize = props.HumanReadableFileSize(lambda s: s.source.info.get("Logical size"))
+    size = props.HumanReadableFileSize(resultUnits="mbytes", fget=lambda s: s.source.info.get("Current size on disk"))
+    maxSize = props.HumanReadableFileSize(resultUnits="mbytes", fget=lambda s: s.source.info.get("Logical size"))
     accessible = props.SourceProperty(lambda s: s.source.info.get("Accessible") == "yes")
 
     registered = props.SourceProperty(

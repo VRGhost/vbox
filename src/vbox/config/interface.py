@@ -1,4 +1,8 @@
-from . import base, storage
+from . import (
+    base,
+    network,
+    storage,
+)
 
 class VM(base.ConfigEntity):
 
@@ -6,14 +10,16 @@ class VM(base.ConfigEntity):
         "acpi", "cpuCount", "cpuExecutionCap",
         "memory", "videoMemory",
         "osType", "accelerate3d", "videoMemory",
+        "groups",
     )
 
     ignoreKeys = ("name", )
 
     subConfigs = {
         "media": storage.Controller,
+        "network": network.Network,
     }
-    
+
     def fromDict(self, data, force=False):
         vmObj = self.api.vms.get(data["name"])
         if vmObj and (not force):

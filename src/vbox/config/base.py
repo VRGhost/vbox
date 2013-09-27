@@ -73,6 +73,8 @@ class ConfigEntity(object):
                 value = data[name]
             except KeyError:
                 continue
+            if not hasattr(obj, name):
+                raise AttributeError("Object {!r} does not have attribute {!r}".format(obj, name))
             try:
                 setattr(obj, name, value)
             except AttributeError:

@@ -115,7 +115,7 @@ class TypeMapper(SourceProperty):
         super(TypeMapper, self)._doSet(obj, self.typeTo(value))
 
 class SourceStr(TypeMapper):
-    
+
     typeFrom = str
     typeTo = str
 
@@ -135,21 +135,44 @@ class OnOff(TypeMapper):
 
 class HumanReadableFileSize(TypeMapper):
 
+    def __init__(self, resultUnits="byte", float=False, **kwargs):
+        super(HumanReadableFileSize, self).__init__(**kwargs)
+        self._rvUnits = resultUnits
+        self._float = float
+
     def typeFrom(self, value):
         (number, units) = value.lower().split()
         base = int(number)
-        if units in ("byte", "bytes"):
+        baseMul = self.getMul(units)
+        rvMul = self.getMul(self._rvUnits)
+
+        byteRv = base * baseMul
+        if self._float:
+            byteRv = float(byteRv)
+        if rvMul > 1:
+            rv = byteRv / rvMul
+        else:
+            rv = byteRv
+
+        return rv
+
+    def getMul(self, name):
+        name = name.lower()
+        if name.endswith("es"):
+            name = name[:-1] # -bytes --> -byte
+        assert name.endswith("byte"), name
+
+        if name == "byte":
             mul = 1
-        elif units in ("kbyte", "kbytes"):
+        elif name == "kbyte":
             mul = 1024
-        elif units in ("mbyte", "mbytes"):
+        elif name == "mbyte":
             mul = 1024 ** 2
-        elif units in ("gbyte", "gbytes"):
+        elif name == "gbyte":
             mul = 1024 ** 3
         else:
-            raise NotImplementedError(units)
-
-        return base * mul
+            raise NotImplementedError(name)
+        return mul
 
     def typeTo(self, value):
         raise NotImplementedError(value)

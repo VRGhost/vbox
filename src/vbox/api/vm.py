@@ -7,6 +7,7 @@ from . import (
     base,
     props,
     storageController,
+    network,
 )
 
 def modify(name):
@@ -55,6 +56,8 @@ class VM(base.Entity):
     memory = props.SourceInt(**modify("memory"))
     videoMemory = props.SourceInt(**modify("vram"))
 
+    osType = props.SourceStr(**modify("ostype"))
+
     destroy = lambda s: s._source.destroy()
     registered = props.SourceProperty(
         fget=lambda s: s.library.isRegistered(s),
@@ -75,6 +78,17 @@ class VM(base.Entity):
     def destroy(self):
         self.registered = True
         self.source.destroy()
+
+    @props.SourceProperty
+    def nics(self):
+        nameRe = re.compile("^nic(\d+)$")
+        out = []
+        for name in self.source.info:
+            match = nameRe.match(name)
+            if match:
+                out.append(network.BoundNIC(self, match.group(1)))
+        print out
+        return tuple(out)
 
     @props.SourceProperty
     def bootOrder(self):
@@ -137,6 +151,25 @@ class VM(base.Entity):
     def _onSourceException(self, exc):
         if isinstance(exc, self.source.exceptions.VmNotFound):
             raise self.exceptions.VmNotFound()
+
+    def groups():
+        def fget(self):
+            strVal = self.source.info.get("groups")
+            if not strVal:
+                return ()
+            return tuple(strVal.split(","))
+        def fset(self, value):
+            out = []
+            for el in value:
+                if not el.startswith("/"):
+                    el = "/" + el
+                out.append(el)
+            if not out:
+                out.append("/")
+
+            self.source.modify(groups=",".join(out))
+        return locals()
+    groups = props.SourceProperty(**groups())
 
 class Library(base.Library):
 
