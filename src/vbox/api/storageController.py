@@ -15,8 +15,19 @@ class MountedMedium(base.SubEntity):
     def __init__(self, controller, medium, slot):
         super(MountedMedium, self).__init__(controller)
         self.controller = controller
-        self.medium = medium
+        self._medium = medium
         self.slot = slot
+
+    def medium():
+        doc = "The medium property."
+        def fget(self):
+            return self._medium
+        def fset(self, value):
+            if value != self._medium:
+                self.controller.attachTo(self.slot, value, override=True)
+                self._medium = value
+        return locals()
+    medium = property(**medium())
 
     @props.SourceProperty
     def isEjectable(self):
@@ -39,17 +50,17 @@ class MountedMedium(base.SubEntity):
 
 class Controller(base.SubEntity):
 
-    maxPortCount = props.SourceInt(lambda s: s.source.info.get(cls_name_gen("maxportcount", s.idx)))
-    portCount = props.SourceInt(lambda s: s.source.info.get(cls_name_gen("portcount", s.idx)))
-    instance = props.SourceInt(lambda s: s.source.info.get(cls_name_gen("instance", s.idx)))
-    hwType = props.SourceStr(lambda s: s.source.info.get(cls_name_gen("type", s.idx)))
+    maxPortCount = props.Int(lambda s: s.source.info.get(cls_name_gen("maxportcount", s.idx)))
+    portCount = props.Int(lambda s: s.source.info.get(cls_name_gen("portcount", s.idx)))
+    instance = props.Int(lambda s: s.source.info.get(cls_name_gen("instance", s.idx)))
+    hwType = props.Str(lambda s: s.source.info.get(cls_name_gen("type", s.idx)))
     bootable = props.OnOff(lambda s: s.source.info.get(cls_name_gen("bootable", s.idx)))
     
     def __init__(self, parent, name):
         super(Controller, self).__init__(parent)
         self.name = name
 
-    @props.SourceInt
+    @props.Int
     def idx(self):
         for (name, value) in self.source.info.iteritems():
             match = STORAGE_CONTROLLER_NAME_RE.match(name)
@@ -121,8 +132,8 @@ class Controller(base.SubEntity):
             raise self.exceptions.ControllerFull()
         self.attachTo(slot, object)
 
-    def attachTo(self, slot, object):
-        if self.slots[slot]:
+    def attachTo(self, slot, object, override=False):
+        if self.slots[slot] and not override:
             raise self.exceptions.SlotBusy(slot)
 
         if object is None:
@@ -174,22 +185,30 @@ class Controller(base.SubEntity):
         medium = data["medium"]
         interface = self.interface
 
-        if medium == "emptydrive":
-            if self.type == "floppy":
-                rv = interface.floppies.empty
-            else:
-                rv = interface.dvds.empty
+        if self.type == "floppy":
+            mediaType = "floppy"
+        elif "IsEjected" in data:
+            mediaType = "dvd"
         else:
-            try:
-                hdd = self.interface.hdds.fromFile(data["medium"])
-            except self.exceptions.MissingFile:
-                pass
+            mediaType = "hdd"
+
+        if medium == "emptydrive":
+            if mediaType == "floppy":
+                rv = interface.floppies.empty
+            elif mediaType == "dvd":
+                rv = interface.dvds.empty
             else:
-                if hdd.accessible:
-                    rv = hdd
-        
-        if not rv:
-            rv = interface.floppies.fromFile(data["medium"])
+                raise NotImplementedError(data)
+        else:
+            if mediaType == "floppy":
+                lib = self.interface.floppies
+            elif mediaType == "dvd":
+                lib = self.interface.dvds
+            elif mediaType == "hdd":
+                lib = self.interface.hdds
+            else:
+                raise NotImplementedError(data)
+            rv = lib.fromFile(medium)
 
         return MountedMedium(self, rv, data["slot"])
 
@@ -198,6 +217,34 @@ class Controller(base.SubEntity):
 
     def __repr__(self):
         return "<{}.{} {!r}>".format(self.__module__, self.__class__.__name__, self.name)
+
+
+
+class DriveAccessor(object):
+    """Object that simplifies access to the mountable media mountpoints."""
+
+    def __init__(self, controllers):
+        super(DriveAccessor, self).__init__()
+        self.controllers = controllers
+
+    @property
+    def dvds(self):
+        out = []
+        for cntrl in self.controllers.all:
+            for device in cntrl.slots.itervalues():
+                if device and device.medium.getStorageAttachKwargs()["type"] == "dvddrive":
+                    out.append(device)
+        return tuple(out)
+
+
+    @property
+    def dvd(self):
+        dvds = tuple(self.dvds)
+        if dvds:
+            rv = dvds[0]
+        else:
+            rv = None
+        return rv
 
 def _typeAccessorProp(typ):
     def _wrapper(self):

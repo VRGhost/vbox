@@ -1,7 +1,7 @@
 import os
 from . import base, props
 
-class FuzzyPath(props.SourceStr):
+class FuzzyPath(props.Str):
 
     def typeFrom(self, val):
         return val.replace('/', os.sep).replace('\\', os.sep)

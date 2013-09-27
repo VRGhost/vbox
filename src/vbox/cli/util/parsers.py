@@ -60,11 +60,17 @@ class MappingList(object):
     def getByIndex(self, idx):
         return self._pairs[idx]
 
-    def items(self):
-        return tuple(self._pairs)
-
     def iteritems(self):
         return iter(self._pairs)
+
+    def items(self):
+        return tuple(self.iteritems())
+
+    def iterkeys(self):
+        return self._index.iterkeys()
+
+    def keys(self):
+        return tuple(self.iterkeys())
 
 class Dummy(object):
     """Base dummy parser.

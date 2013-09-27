@@ -1,5 +1,6 @@
 from .. import base
 from . import (
+    extraData,
     manage_list,
     storage,
     vm,
@@ -36,6 +37,10 @@ class VBoxManage(base.RealCommand):
 
             # List
             manage_list.List,
+
+            # Extra data
+            extraData.SetExtraData,
+            extraData.GetExtraData,
         ):
             obj = cls(self.interface, self)
             name = cls.__name__

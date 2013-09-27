@@ -4,6 +4,7 @@ from . import (
     floppy,
     hdd,
     host,
+    network,
     vm,
 )
 
@@ -20,3 +21,4 @@ class VirtualBox(object):
         self.hdds = hdd.Library(self)
         self.dvds = dvd.Library(self)
         self.floppies = floppy.Library(self)
+        self.networking = network.Library(self)

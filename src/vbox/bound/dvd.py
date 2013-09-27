@@ -1,7 +1,8 @@
 from . import base
 
+class DVD(base.Entity):
+    pass
+    
 class Library(base.Library):
-    pass
 
-class HDD(base.Entity):
-    pass
+    entityCls = DVD

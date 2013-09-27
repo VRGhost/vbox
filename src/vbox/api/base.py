@@ -114,6 +114,9 @@ class Library(SourceObjectProxy):
         assert apiObject.library is self, (apiObject, self)
         return self.source.isRegistered(apiObject.source)
 
+    def listRegistered(self):
+        return tuple(self.entityCls(src, self) for src in self.source.listRegistered())
+
 class SubEntity(SourceObjectProxy):
 
     def __init__(self, parent):

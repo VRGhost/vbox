@@ -4,6 +4,7 @@ from functools import partial
 from . import (
     base,
     exceptions,
+    extraData,
 )
 
 refreshing = base.refreshing
@@ -12,9 +13,12 @@ refreshingLib = base.refreshingLib
 class VM(base.Entity):
 
     info = base.refreshedProperty(lambda s: s.cli.manage.showVMInfo(s.id))
+    extraData = None
 
     def __init__(self, *args, **kwargs):
         super(VM, self).__init__(*args, **kwargs)
+
+        self.extraData = extraData.ExtraData(self.root.cli, self.id)
         self.addCacheUpdateCallback(self._bindImmutableData)
 
     def exists(self):

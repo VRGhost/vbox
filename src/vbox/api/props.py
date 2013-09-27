@@ -112,20 +112,41 @@ class TypeMapper(SourceProperty):
         )
 
     def _doSet(self, obj, value):
+        if value == self.__get__(obj):
+            return
         super(TypeMapper, self)._doSet(obj, self.typeTo(value))
 
-class SourceStr(TypeMapper):
+class Str(TypeMapper):
 
     typeFrom = str
     typeTo = str
 
-class SourceInt(TypeMapper):
+class StrOrNone(TypeMapper):
+
+    def typeFrom(self, val):
+        if val == "none":
+            rv = None
+        else:
+            rv = val
+        return rv
+
+    def typeTo(self, val):
+        if val:
+            rv = val
+        else:
+            rv = "none"
+        return rv
+
+class Int(TypeMapper):
 
     typeFrom = int
 
 class OnOff(TypeMapper):
 
     def typeFrom(self, value):
+        if value is None:
+            return None
+            
         value = value.lower()
         assert value in ("on", "off")
         return value == "on"
@@ -176,3 +197,19 @@ class HumanReadableFileSize(TypeMapper):
 
     def typeTo(self, value):
         raise NotImplementedError(value)
+
+def modify(name):
+    """vboxmanage modify callback property."""
+    return {
+        "fget": lambda self: self.source.info.get(name),
+        "fset": lambda self, value: self.source.modify(**{name: value}),
+    }
+
+def modifySelfRef(name):
+    def _fget(self):
+        propName = name.format(self=self)
+        return self.source.info.get(propName)
+    def _fset(self, value):
+        propName = name.format(self=self)
+        self.source.modify(**{propName: value})
+    return {"fget": _fget, "fset": _fset}

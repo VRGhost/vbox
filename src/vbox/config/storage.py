@@ -84,7 +84,7 @@ class SataOrIdeBus(Bus):
                     "basename": fname,
                 })
             rv = self.api.hdds.create(**kw)
-        elif typ == "dvd":
+        elif typ == "dvddrive":
             target = data.get("target")
             if not target:
                 rv = self.api.dvds.empty

@@ -81,12 +81,13 @@ def refreshed(func):
     name = "_refreshed_cache_for_{!r}".format(func.__name__)
     def _wrapper(self, *args, **kwargs):
         try:
-            return self.__dict__[name](*args, **kwargs)
+            handler = self.__dict__[name]
         except KeyError:
             handler = BoundCaching(func, self)
             self.addCacheClearCallback(lambda s: handler.clearCache())
             self.__dict__[name] = handler # This will effectivly prohibit successive '_wrapper' calls and will force for 'handler' to be called instead.
-            return handler(*args, **kwargs)
+            
+        return handler(*args, **kwargs)
     return functools.wraps(func)(_wrapper)
 
 def refreshedProperty(func):
@@ -102,14 +103,14 @@ class Refreshable(object):
 
     def __init__(self):
         super(Refreshable, self).__init__()
-        self.cacheClearCallbacks = set()
-        self.cacheUpdateCallbacks = set()
+        self.cacheClearCallbacks = []
+        self.cacheUpdateCallbacks = []
 
     def addCacheClearCallback(self, cb):
-        self.cacheClearCallbacks.add(cb)
+        self.cacheClearCallbacks.append(cb)
 
     def addCacheUpdateCallback(self, cb):
-        self.cacheUpdateCallbacks.add(cb)
+        self.cacheUpdateCallbacks.append(cb)
 
     def clearCache(self):
         self.onCacheClear()

@@ -9,8 +9,8 @@ from . import (
 class HDD(base.Entity):
     """Virtual machine entity."""
 
-    UUID = props.SourceStr(lambda s: s.source.info.get("UUID"))
-    location = props.SourceStr(lambda s: s.source.info.get("Location"))
+    UUID = props.Str(lambda s: s.source.info.get("UUID"))
+    location = props.Str(lambda s: s.source.info.get("Location"))
     size = props.HumanReadableFileSize(resultUnits="mbytes", fget=lambda s: s.source.info.get("Current size on disk"))
     maxSize = props.HumanReadableFileSize(resultUnits="mbytes", fget=lambda s: s.source.info.get("Logical size"))
     accessible = props.SourceProperty(lambda s: s.source.info.get("Accessible") == "yes")

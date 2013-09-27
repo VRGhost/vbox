@@ -5,16 +5,11 @@ import time
 
 from . import (
     base,
+    meta,
+    network,
     props,
     storageController,
-    network,
 )
-
-def modify(name):
-    return {
-        "fget": lambda self: self.source.info.get(name),
-        "fset": lambda self, value: self.source.modify(**{name: value}),
-    }
 
 class State(base.SubEntity):
 
@@ -48,15 +43,14 @@ class State(base.SubEntity):
 class VM(base.Entity):
     """Virtual machine entity."""
 
-    UUID = props.SourceStr(lambda src: src.info.get("UUID"))
+    UUID = props.Str(lambda src: src.info.get("UUID"))
 
-    acpi = props.OnOff(**modify("acpi"))
-    cpuCount = props.SourceInt("cpus")
-    cpuExecutionCap = props.SourceInt("cpuexecutioncap")
-    memory = props.SourceInt(**modify("memory"))
-    videoMemory = props.SourceInt(**modify("vram"))
-
-    osType = props.SourceStr(**modify("ostype"))
+    acpi = props.OnOff(**props.modify("acpi"))
+    cpuCount = props.Int(**props.modify("cpus"))
+    cpuExecutionCap = props.Int(**props.modify("cpuexecutioncap"))
+    memory = props.Int(**props.modify("memory"))
+    videoMemory = props.Int(**props.modify("vram"))
+    osType = props.Str(**props.modify("ostype"))
 
     destroy = lambda s: s._source.destroy()
     registered = props.SourceProperty(
@@ -68,12 +62,15 @@ class VM(base.Entity):
     changeTime = props.SourceProperty(lambda s: datetime.datetime.strptime(
         s.source.info.get("VMStateChangeTime")[:-3], "%Y-%m-%dT%H:%M:%S.%f"))
 
-    storageControllers = state = None
+    storageControllers = state = meta = storage = None
 
     def __init__(self, *args, **kwargs):
         super(VM, self).__init__(*args, **kwargs)
+
         self.storageControllers = storageController.Library(self)
+        self.storage = storageController.DriveAccessor(self.storageControllers)
         self.state = State(self)
+        self.meta = meta.Meta(self.source.extraData)
 
     def destroy(self):
         self.registered = True
@@ -83,11 +80,12 @@ class VM(base.Entity):
     def nics(self):
         nameRe = re.compile("^nic(\d+)$")
         out = []
-        for name in self.source.info:
+        for name in self.source.info.iterkeys():
             match = nameRe.match(name)
             if match:
-                out.append(network.BoundNIC(self, match.group(1)))
-        print out
+                out.append(network.BoundNIC(self, int(match.group(1))))
+
+        out.sort(key=lambda nic: nic.idx)
         return tuple(out)
 
     @props.SourceProperty
