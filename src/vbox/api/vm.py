@@ -1,10 +1,12 @@
 import datetime
 import itertools
+import os
 import re
 import time
 
 from . import (
     base,
+    guest,
     meta,
     network,
     props,
@@ -26,6 +28,7 @@ class State(base.SubEntity):
     mutable = property(lambda s: s.val in ("poweroff", "aborted"))
 
     knownStates = (
+        None, # VirtualBox was not ready to provide valid vm info.
         "running", "paused", "poweroff",
         "aborted", "stopping", "saved",
     )
@@ -37,13 +40,15 @@ class State(base.SubEntity):
         return rv
 
     for name in knownStates:
-        locals()[name] = (lambda X: property(lambda s: s.val == X))(name)
+        if name:
+            locals()["is{}".format(name.title())] = (lambda X: (lambda s: s.val == X))(name)
     del name
 
 class VM(base.Entity):
     """Virtual machine entity."""
 
-    UUID = props.Str(lambda src: src.info.get("UUID"))
+    UUID = props.Str(lambda s: s.source.info.get("UUID"))
+    name = props.Str(lambda s: s.source.info.get("name"))
 
     acpi = props.OnOff(**props.modify("acpi"))
     cpuCount = props.Int(**props.modify("cpus"))
@@ -71,6 +76,7 @@ class VM(base.Entity):
         self.storage = storageController.DriveAccessor(self.storageControllers)
         self.state = State(self)
         self.meta = meta.Meta(self.source.extraData)
+        self.guest = guest.GuestAdditions(self.source)
 
     def destroy(self):
         self.registered = True
@@ -168,6 +174,45 @@ class VM(base.Entity):
             self.source.modify(groups=",".join(out))
         return locals()
     groups = props.SourceProperty(**groups())
+
+    def clone(self, name=None, autoname=False, baseDir=None, register=True):
+        """Clone virtual machine.
+
+        http://www.virtualbox.org/manual/ch08.html#vboxmanage-clonevm
+
+        Parameters:
+            - `name` - name for the new vm to be cloned;
+            - `basedir` - path where clone will be stored;
+            - `register` (default: `True`) - if the new vm has to be registered at the virtualbox;
+
+            returns new api.VM instance
+        """
+        if not baseDir:
+            baseDir = self.interface.host.defaultVmDir
+        if not os.path.isdir(baseDir):
+            raise self.exceptions.ApiError("Base directory {!r} is not acessible".format(baseDir))
+
+        def _nameGen(name, autoname):
+            if name and (not autoname):
+                yield name
+            else:
+                name = name or self.name
+                yield name
+                for idx in itertools.count(2):
+                    yield "{} ({})".format(name, idx)
+
+        for testName in _nameGen(name, autoname):
+            if (not os.path.exists(os.path.join(baseDir, testName))) and \
+                self.library.get(testName) is None \
+            :
+                break
+        else:
+            raise self.exceptions.ApiError("Unable to generate unique VM name for {!r}".format(name))
+
+        self.source.clone(testName, baseDir, register)
+        rv = self.library.get(testName)
+        assert rv is not None
+        return rv
 
 class Library(base.Library):
 

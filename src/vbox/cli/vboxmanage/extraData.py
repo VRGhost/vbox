@@ -57,3 +57,4 @@ class GetExtraData(base.SubCommand):
     )
 
     parser = ExtraDataOutParser()
+

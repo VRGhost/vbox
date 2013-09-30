@@ -1,6 +1,7 @@
 from .. import base
 from . import (
     extraData,
+    guest,
     manage_list,
     storage,
     vm,
@@ -41,6 +42,10 @@ class VBoxManage(base.RealCommand):
             # Extra data
             extraData.SetExtraData,
             extraData.GetExtraData,
+
+            # Guest stuff
+            guest.GuestProperty,
+            guest.GuestControl,
         ):
             obj = cls(self.interface, self)
             name = cls.__name__

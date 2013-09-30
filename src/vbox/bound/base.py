@@ -100,6 +100,7 @@ class Refreshable(object):
     """An object that can uses caching and thus can be refreshed."""
 
     refreshCallbacks = None
+    exceptions = exceptions
 
     def __init__(self):
         super(Refreshable, self).__init__()
@@ -185,7 +186,7 @@ class Library(CliAccessor):
         return rv
 
     def get(self, challange):
-        for el in self.objects:
+        for el in self.all():
             if el.is_(challange):
                 return el
         else:
@@ -212,7 +213,6 @@ class Library(CliAccessor):
 
 class Entity(CliAccessor):
     """Single entity (produced by the factory)."""
-    exceptions = exceptions
 
     def __init__(self, library, id):
         super(Entity, self).__init__(library.root.cli)

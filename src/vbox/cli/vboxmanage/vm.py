@@ -20,7 +20,7 @@ class ShowVMInfo(base.SubCommand):
         mandatory=("target", ),
         positional=("--details", "--machinereadable", "{target}", ),
     )
-    outCheck = util.OutCheck(okRc=(0, 1))
+    # outCheck = util.OutCheck(okRc=(0, 1))
     parser = VMInfoParser()
 
 class CreateVM(base.SubCommand):

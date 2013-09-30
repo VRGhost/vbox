@@ -5,6 +5,7 @@ from . import (
     base,
     exceptions,
     extraData,
+    guest,
 )
 
 refreshing = base.refreshing
@@ -19,10 +20,18 @@ class VM(base.Entity):
         super(VM, self).__init__(*args, **kwargs)
 
         self.extraData = extraData.ExtraData(self.root.cli, self.id)
+        self.guest = guest.Guest(self)
         self.addCacheUpdateCallback(self._bindImmutableData)
 
+    @base.refreshed
     def exists(self):
-        return bool(self.info)
+        try:
+            self.info
+        except self.exceptions.VmNotFound:
+            rv = False
+        else:
+            rv = True
+        return rv
 
     @refreshing
     def create(self, **kwargs):
@@ -48,6 +57,19 @@ class VM(base.Entity):
     def destroy(self):
         self.unregister(True)
 
+    def clone(self, name, basedir, register=True):
+        try:
+            self.cli.manage.cloneVM(self.id,
+                name=name, basefolder=basedir, register=register)
+        finally:
+            if register:
+                self.library.clearCache()
+        rv = self.library.new(name)
+        rv.clearCache() # if this object had been existing already, its cache has to be reset
+        # As it was not existing previously.
+        assert rv.exists(), (rv, name)
+        return rv
+
     storageCtl = refreshing(lambda s, **kw: s.cli.manage.storageCtl(s.id, **kw))
     storageAttach = refreshing(lambda s, **kw: s.cli.manage.storageAttach(s.id, **kw))
     modify = refreshing(lambda s, **kw: s.cli.manage.modifyVM(s.id, **kw))
@@ -69,11 +91,13 @@ class VM(base.Entity):
     def is_(self, challange):
         if super(VM, self).is_(challange):
             return True
-        try:
-            if self.info["UUID"] == challange:
-                return True
-        except KeyError:
-            pass
+
+        for key in ("UUID", "name"):
+            try:
+                if self.info[key] == challange:
+                    return True
+            except KeyError:
+                pass
 
         return False
 
