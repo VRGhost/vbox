@@ -35,7 +35,14 @@ class State(base.SubEntity):
 
     @props.SourceProperty
     def val(self):
-        rv = self.source.info.get("VMState")
+        try:
+            rv = self.source.info.get("VMState")
+        except self.source.cli.exceptions.ParsedVboxError as err:
+            if err.errorName == "E_ACCESSDENIED":
+                rv = None
+            else:
+                raise
+                
         assert rv in self.knownStates, repr(rv)
         return rv
 
@@ -76,7 +83,7 @@ class VM(base.Entity):
         self.storage = storageController.DriveAccessor(self.storageControllers)
         self.state = State(self)
         self.meta = meta.Meta(self.source.extraData)
-        self.guest = guest.GuestAdditions(self.source)
+        self.guest = guest.GuestAdditions(self)
 
     def destroy(self):
         self.registered = True

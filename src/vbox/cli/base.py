@@ -51,7 +51,7 @@ class BaseCmd(object):
         return rv
 
     def _checkErrOutput(self, args, cmd, rc, out):
-        if not self.outCheck(args, rc,  out):
+        if not self.outCheck(args, rc, out):
             match = ERR_MSG_PARSE_RE.search(out)
             if match:
                 raise self.exceptions.ParsedVboxError(
