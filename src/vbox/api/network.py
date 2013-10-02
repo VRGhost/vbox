@@ -18,18 +18,22 @@ class BoundNIC(base.SubEntity):
                 rv = typ
             return typ
         def fset(self, value):
+            prev = self.type
+
             if not value:
                 rv = "none"
-            else:                
+            else:
                 available = self.listAvailable(value)
+                kw = {"nic{}".format(self.idx): value}
                 if available:
                     # Set try to bind adapter simultaniously with the adapter type
-                    kw = {
-                        "nic{}".format(self.idx): value,
-                        self._getAdapterPropName(value): available[0],
-                    }
-                    self.source.modify(**kw)
+                    kw[self._getAdapterPropName(value)] = available[0]
 
+                if not prev:
+                    # If this adapter is being created from nothing, ensure that cable is connected by default.
+                    kw["cableconnected{}".format(self.idx)] = "on"
+
+                self.source.modify(**kw)
                 rv = value
             return rv
         return locals()
@@ -111,7 +115,7 @@ class BoundNIC(base.SubEntity):
 
 
 class Library(base.Library):
-    
+
     @props.SourceProperty
     def hostOnlyInterfaces(self):
         return self.source.hostOnlyInterfaces
