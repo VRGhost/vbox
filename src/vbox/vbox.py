@@ -17,11 +17,12 @@ class VBox(object):
 
     installRoot = None # Will contain path that
 
-    def __init__(self, extraPath=None, debug=False):
+    def __init__(self, extraPath=None, debug=False, verbose=False):
         """`extraPath` - list of extra directories to check for the virtualbox executables.
             `debug` - runs bindings in the debugging mode, enables run-time sainity checks.
         """
         self.debug = debug
+        self.verbose = verbose or debug
 
         toCheck = []
         if extraPath:
@@ -41,7 +42,7 @@ class VBox(object):
         for testDir in dirs:
             if os.path.isdir(testDir):
                 try:
-                    return popen.Hub(testDir, self.debug)
+                    return popen.Hub(testDir, self.debug, self.verbose)
                 except exceptions.VirtualBoxNotFound:
                     continue
             else:

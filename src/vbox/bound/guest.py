@@ -68,7 +68,15 @@ class GuestControl(GuestEl):
         if waitStderr is not None:
             kw["waitStderr"] = waitStderr
 
-        return self.cli.manage.guestControl.execute(**kw)
+        try:
+            return self.cli.manage.guestControl.execute(**kw)
+        except self.cli.exceptions.CalledProcessError as err:
+            if "VERR_TIMEOUT" in str(err):
+                raise self.exceptions.ExecuteTimeout(err.output)
+            else:
+                raise
+        except self.cli.exceptions.TimeoutException as err:
+            raise self.exceptions.ExecuteTimeout(str(err))
 
     def stat(self, paths, user, password):
         paths = tuple(paths)

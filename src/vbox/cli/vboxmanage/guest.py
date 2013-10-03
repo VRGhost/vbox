@@ -57,7 +57,7 @@ class GuestControl(NoKwargCmd):
         [(lambda cmd: cmd[2] == "stat"), util.OutCheck(okRc=(0, 1))], # 'stat' returns rc 1 when at least one of file names provided was not found.
         [(lambda cmd: True), util.OutCheck(okRc=(0, ))], # Default catcher
     ])
-    
+
     def copyTo(self, *args, **kwargs):
         return self(*self.copyToFmt(args, kwargs))
 
@@ -65,10 +65,14 @@ class GuestControl(NoKwargCmd):
         waitExit=None, waitStdout=None, waitStderr=None
     ):
         cmd = [target, "execute", "--image", image, "--username", username, "--password", password]
+        kw = {}
+
         if environment:
             cmd.extend(("--environment", environment))
         if timeout:
             cmd.extend(("--timeout", str(timeout)))
+            kw["_timeout"] = float(timeout) / 1000 # python timeouts are maesured in seconds
+
         if waitExit:
             cmd.append("--wait-exit")
         if waitStdout:
@@ -78,7 +82,8 @@ class GuestControl(NoKwargCmd):
         if arguments:
             cmd.append("--")
             cmd.extend(arguments)
-        return self(*cmd)
+
+        return self(*cmd, **kw)
 
     statRe = re.compile('^Element "([^"]+)" found: Is a (\w+)$')
     def stat(self, target, files, username, password):

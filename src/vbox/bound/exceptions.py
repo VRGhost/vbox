@@ -8,3 +8,6 @@ class FileAlreadyExists(BoundError):
 
 class VmNotFound(BoundError):
     pass
+
+class ExecuteTimeout(BoundError):
+    pass

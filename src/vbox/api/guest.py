@@ -8,16 +8,15 @@ from . import (
     props,
 )
 
-class GuestControl(object):
+class GuestControl(base.SourceObjectProxy):
 
     class Stats(object):
         file = "<vbox.api.GustControl.Stats.File>"
         directory = "<vbox.api.GustControl.Stats.Directory>"
 
     def __init__(self, interface, source, login, password):
-        super(GuestControl, self).__init__()
+        super(GuestControl, self).__init__(source)
         self.interface = interface
-        self.source = source
         self.login = login
         self.password = password
 
@@ -47,9 +46,20 @@ class GuestControl(object):
         return out
 
     def waitBoot(self, timeout=None):
+        """Wait for the guest to boot its OS and for the guest additions to become operational."""
         guestOs = self.interface.guest.osType
         if guestOs == "Linux":
-            statFname = "/"
+            filesThatMustExist = ("/", "/etc")
+
+            testStr = "==42 hello world 24=="
+            execProgs = [
+                {
+                    "call": ("/bin/echo", testStr),
+                    "test": lambda out: testStr in out,
+                },
+            ]
+
+            filesThatMustNotExist = ("/etc/nologin", )
         else:
             raise NotImplementedError(guestOs)
 
@@ -59,20 +69,43 @@ class GuestControl(object):
         else:
             timeOk = lambda: True
 
-        statRv = self.stat(statFname)[statFname]
-        proceed = (statRv is None)
-        while proceed:
+        filesReady = lambda: None not in self.stat(*filesThatMustExist).values()
+        while (not filesReady()) and timeOk():
             time.sleep(0.5)
-            statRv = self.stat(statFname)[statFname]
-            proceed = (statRv is None) and timeOk()
 
-        return statRv is not None
+        if not timeOk():
+            # Failed due to the timeout
+            return False
+
+        while timeOk():
+            for prog in execProgs:
+                try:
+                    out = self.execute(prog["call"], timeout=1.5, retries=5)
+                except self.exceptions.ExecuteError:
+                    break
+
+                if not prog["test"](out):
+                    break
+            else:
+                # No 'break' called, all programs executed fine
+                break
+
+        if not timeOk():
+            return False
+
+        filesReady = lambda: all(el is None for el in self.stat(*filesThatMustNotExist).values())
+        while (not filesReady()) and timeOk():
+            time.sleep(0.5)
+
+        # time.sleep(5)
+        return timeOk()
 
 
 
     lastExecCall = 0
 
-    def execute(self, program, environ=None, timeout=None, arguments=(),
+    def execute(self, arguments, environ=None, timeout=None, program=None,
+        retries=None,
         waitExit=True, stdout=True, stderr=True
     ):
         """Execute the target program on the guest.
@@ -80,29 +113,63 @@ class GuestControl(object):
         http://www.virtualbox.org/manual/ch08.html#vboxmanage-guestcontrol
 
         Params:
-        `program` -- executable to be called
         `environ` -- dictionary of environment varaiables to be overriden for the guest process
             (pass `None` as value to delete the variable)
         `timeout` -- timeout (in seconds) for the host to wait for the guest to complete the program
+        `program` -- executable to be called, if empty, it is expected for the first element of `arguments`
+            to contain the program (with absolute path)
         `arguments` -- extra command line arguments to be passed to the guest program
         `waitExit` -- wait for the gust program to complete before returning from the call
         `stdout` -- waits until the process ends and outputs and collects its stdout
         `stderr` -- waits until the process ends and outputs and collects its stderr
+        `retries` -- maximum amount of re-attempts to execute the command if it fails.
         """
 
         # It appears that `execute` freezes sometimes if call speed is too great.
         delay = max(0, time.time() - self.lastExecCall)
-        if delay < 3:
-            time.sleep(3 - delay)
+        if delay < 2:
+            time.sleep(2 - delay)
 
-        rv = self.source.guest.control.execute(program,
-            user=self.login, password=self.password,
-            environment=environ, timeout=timeout,
-            arguments=tuple(arguments),
-            waitExit=waitExit, waitStdout=stdout, waitStderr=stderr,
-        )
+        if not program:
+            if arguments:
+                arguments = list(arguments)
+                program = arguments.pop(0)
+            else:
+                raise self.exceptions.GuestException("Please provide program name to be executed")
 
-        lastExecCall = time.time()
+        pendingExceptions = []
+        if retries:
+            if not timeout:
+                raise Exception("You have to define timeout if you want to do retries.")
+            tryCounter = xrange(retries)
+        else:
+            tryCounter = (0, )
+
+        for attemptNo in tryCounter:
+            try:
+                rv = self.source.guest.control.execute(program,
+                    user=self.login, password=self.password,
+                    environment=environ, timeout=timeout,
+                    arguments=tuple(arguments),
+                    waitExit=waitExit, waitStdout=stdout, waitStderr=stderr,
+                )
+            except self.source.exceptions.ExecuteTimeout as err:
+                pendingExceptions.append(self.exceptions.ExecuteTimeout(repr(err)))
+            except self.source.cli.exceptions.CalledProcessError as err:
+                pendingExceptions.append(self.exceptions.ExecuteError(repr(err)))
+            else:
+                # No exceptions
+                break
+            finally:
+                self.lastExecCall = time.time()
+        else:
+            # No `break` called, attempts exausted
+            assert pendingExceptions
+            if len(pendingExceptions) == 1:
+                raise pendingExceptions[0]
+            else:
+                raise self.exceptions.ExecuteError(" :: ".join(str(el) for el in pendingExceptions))
+
         return rv
 
     def __exit__(self, *args, **kwargs):

@@ -42,7 +42,7 @@ class State(base.SubEntity):
                 rv = None
             else:
                 raise
-                
+
         assert rv in self.knownStates, repr(rv)
         return rv
 

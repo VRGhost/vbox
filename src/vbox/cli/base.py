@@ -31,9 +31,17 @@ class BaseCmd(object):
         self.interface = interface
 
     def __call__(self, *args, **kwargs):
-        """Main command handler."""
+        """Main command handler.
+
+        All kwargs starting with '_' are passed to the `execute` call
+        """
+        execKw = {}
+        for name in tuple(kwargs.keys()):
+            if name.startswith("_"):
+                execKw[name[1:]] = kwargs.pop(name)
+
         args = self._toCmdLine(args, kwargs)
-        (cmd, rc, out) = self._exec(args)
+        (cmd, rc, out) = self._exec(args, **execKw)
         cmd = tuple(cmd)
         self._checkErrOutput(args, cmd, rc, out)
         return self._parse(args, out)
@@ -74,11 +82,11 @@ class RealCommand(BaseCmd):
         super(RealCommand, self).__init__(interface)
         self.subproc = interface.popen.bind(executable)
 
-    def _exec(self, cmd):
-        return self.subproc(cmd)
+    def _exec(self, cmd, **kw):
+        return self.subproc(cmd, **kw)
 
-    def childCall(self, cmd):
-        return self._exec(cmd)
+    def childCall(self, cmd, kw):
+        return self._exec(cmd, **kw)
 
     def __repr__(self):
         return "<{} {!r}>".format(self.__class__.__name__, self.subproc)
@@ -89,8 +97,8 @@ class SubCommand(BaseCmd):
         super(SubCommand, self).__init__(interface)
         self.parent = parent
 
-    def _exec(self, cmd):
-        return self.parent.childCall(cmd)
+    def _exec(self, cmd, **kw):
+        return self.parent.childCall(cmd, kw)
 
     def __repr__(self):
         return "<{} parent={!r}>".format(self.__class__.__name__, self.parent)

@@ -1,4 +1,5 @@
 from .. import exceptions
+from ..popen.exceptions import TimeoutException
 
 class CalledProcessError(exceptions.BaseException):
     """Emulates subprocess exception interface."""

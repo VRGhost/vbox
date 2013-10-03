@@ -20,3 +20,12 @@ class VmNotFound(ApiError):
 
 class VmAlreadyExists(ApiError):
     pass
+
+class GuestException(ApiError):
+    pass
+
+class ExecuteError(GuestException):
+    pass
+
+class ExecuteTimeout(ExecuteError):
+    pass

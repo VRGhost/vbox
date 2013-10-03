@@ -13,7 +13,6 @@ refreshingLib = base.refreshingLib
 
 class VM(base.Entity):
 
-    info = base.refreshedProperty(lambda s: s.cli.manage.showVMInfo(s.id))
     extraData = None
 
     def __init__(self, *args, **kwargs):
@@ -22,6 +21,10 @@ class VM(base.Entity):
         self.extraData = extraData.ExtraData(self.root.cli, self.id)
         self.guest = guest.Guest(self)
         self.addCacheUpdateCallback(self._bindImmutableData)
+
+    @base.refreshedProperty
+    def info(self):
+        return self.cli.manage.showVMInfo(self.id)
 
     @base.refreshed
     def exists(self):

@@ -86,7 +86,7 @@ def refreshed(func):
             handler = BoundCaching(func, self)
             self.addCacheClearCallback(lambda s: handler.clearCache())
             self.__dict__[name] = handler # This will effectivly prohibit successive '_wrapper' calls and will force for 'handler' to be called instead.
-            
+
         return handler(*args, **kwargs)
     return functools.wraps(func)(_wrapper)
 
