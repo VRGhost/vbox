@@ -80,7 +80,7 @@ class GuestControl(base.SourceObjectProxy):
         while timeOk():
             for prog in execProgs:
                 try:
-                    out = self.execute(prog["call"], timeout=1.5, retries=5)
+                    out = self.execute(prog["call"], timeout=20, retries=5)
                 except self.exceptions.ExecuteError:
                     break
 
@@ -100,13 +100,10 @@ class GuestControl(base.SourceObjectProxy):
         # time.sleep(5)
         return timeOk()
 
-
-
-    lastExecCall = 0
-
     def execute(self, arguments, environ=None, timeout=None, program=None,
         retries=None,
-        waitExit=True, stdout=True, stderr=True
+        waitExit=True, stdout=True, stderr=True,
+        force=False,
     ):
         """Execute the target program on the guest.
 
@@ -126,10 +123,6 @@ class GuestControl(base.SourceObjectProxy):
         """
 
         # It appears that `execute` freezes sometimes if call speed is too great.
-        delay = max(0, time.time() - self.lastExecCall)
-        if delay < 2:
-            time.sleep(2 - delay)
-
         if not program:
             if arguments:
                 arguments = list(arguments)
@@ -144,6 +137,12 @@ class GuestControl(base.SourceObjectProxy):
             tryCounter = xrange(retries)
         else:
             tryCounter = (0, )
+
+        if (timeout is not None) and (timeout < 10) and (not force):
+            raise ValueError(
+                "Please set timeout to the value greater than 10 seconds. "
+                "There is a lag between command starting to be executed on the host and the actual call done on the guest."
+            )
 
         for attemptNo in tryCounter:
             try:
@@ -160,15 +159,19 @@ class GuestControl(base.SourceObjectProxy):
             else:
                 # No exceptions
                 break
-            finally:
-                self.lastExecCall = time.time()
         else:
             # No `break` called, attempts exausted
             assert pendingExceptions
             if len(pendingExceptions) == 1:
                 raise pendingExceptions[0]
             else:
-                raise self.exceptions.ExecuteError(" :: ".join(str(el) for el in pendingExceptions))
+                classes = set(type(el) for el in pendingExceptions)
+                text = " :: ".join(set(str(el) for el in pendingExceptions))
+                if len(classes) == 1:
+                    exc = classes.pop()(text)
+                else:
+                    exc = self.exceptions.ExecuteError(text)
+                raise exc
 
         return rv
 

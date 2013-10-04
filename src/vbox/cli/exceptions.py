@@ -24,3 +24,11 @@ class ParsedVboxError(CalledProcessError):
         self.errorName = errorName
         self.errorCode = errorCode
         self.msg = message
+
+class TooManyGuestSessions(exceptions.BaseException):
+
+    def __init__(self, maxCnt):
+        super(TooManyGuestSessions, self).__init__(
+            "Maximum number of guest sessions ({}) reached.".format(maxCnt)
+        )
+        self.maxCount = maxCnt

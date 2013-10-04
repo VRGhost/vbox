@@ -1,4 +1,8 @@
+import collections
+import functools
 import re
+import threading
+import time
 
 from .. import (
     base,
@@ -43,8 +47,53 @@ class ConditionalOutCheck(util.OutCheck):
                 return check(args, rc, out)
         raise NotImplementedError((args, rc, out))
 
+def rateLimited(func):
+    @functools.wraps(func)
+    def _wrapper(self, *args, **kwargs):
+        with self.rateLock:
+            windowSize = time.time() - self._callLog[0]
+            if windowSize < self.callsPerSec:
+                time.sleep(self.callsPerSec - windowSize)
+            try:
+                return func(self, *args, **kwargs)
+            finally:
+                self._callLog.append(time.time())
+    return _wrapper
+
+class CallRateLimiter(object):
+    """Context object that limits number of its invocation per moment of time."""
+
+    def __init__(self, maxCallCnt, callsPerSec):
+        super(CallRateLimiter, self).__init__()
+        self.rateLock = threading.RLock()
+        self.callLog = collections.deque([0], maxlen=maxCallCnt)
+        self.callsPerSec = callsPerSec
+
+    def acquire(self):
+        self.rateLock.acquire()
+        windowSize = time.time() - self.callLog[0]
+        if windowSize < self.callsPerSec:
+            time.sleep(max(self.callsPerSec - windowSize, 0.1))
+
+    def release(self):
+        self.rateLock.release()
+        self.callLog.append(time.time())
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.release()
 
 class GuestControl(NoKwargCmd):
+    """GuestControl binding.
+
+    This object implements simple rate limiting
+    because VBoxManage likes to exceed the number of guest sessions, supposingly because
+    the sessions are garbage-collected at certain (rather low) frequency.
+    """
+    
 
     copyToFmt = util.Formatter(
         all=("target", "src", "dest", "username", "password", "dryrun", "follow", "recursive", "verbose"),
@@ -57,6 +106,18 @@ class GuestControl(NoKwargCmd):
         [(lambda cmd: cmd[2] == "stat"), util.OutCheck(okRc=(0, 1))], # 'stat' returns rc 1 when at least one of file names provided was not found.
         [(lambda cmd: True), util.OutCheck(okRc=(0, ))], # Default catcher
     ])
+
+    # The call rate is limited at maxCallCnt per callsPerSec
+    maxCallCnt = 5
+    callsPerSec = 1
+
+    def __init__(self, *args, **kwargs):
+        super(GuestControl, self).__init__(*args, **kwargs)
+        self._rateLimiter = CallRateLimiter(self.maxCallCnt, self.callsPerSec)
+
+    def __call__(self, *args, **kwargs):
+        with self._rateLimiter:
+            return super(GuestControl, self).__call__(*args, **kwargs)
 
     def copyTo(self, *args, **kwargs):
         return self(*self.copyToFmt(args, kwargs))
@@ -86,6 +147,7 @@ class GuestControl(NoKwargCmd):
         return self(*cmd, **kw)
 
     statRe = re.compile('^Element "([^"]+)" found: Is a (\w+)$')
+
     def stat(self, target, files, username, password):
         cmd = [target, "stat"]
         cmd.extend(files)
@@ -98,3 +160,11 @@ class GuestControl(NoKwargCmd):
             if match:
                 out[match.group(1)] = match.group(2)
         return out
+
+    _maxGuestSessionRe = re.compile(r"Maximum number of guest sessions \((\d+)\) reached")
+    def _onErrOutput(self, args, cmd, rc, out):
+        match = self._maxGuestSessionRe.search(out)
+        if match:
+            raise self.exceptions.TooManyGuestSessions(int(match.group(1)))
+        else:
+            return super(GuestControl, self)._onErrOutput(args, cmd, rc, out)
