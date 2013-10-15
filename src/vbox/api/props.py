@@ -8,8 +8,10 @@ class SourceProperty(object):
 
     getTarget = fget = fset = fdel = None
 
-    def __init__(self, fget, fset=None, fdel=None, getDepends=None):
+    def __init__(self, fget, fset=None, fdel=None, getDepends=None, doc=None):
         super(SourceProperty, self).__init__()
+        if doc:
+            self.__doc__ = doc
         self.fget = fget
         self.fset = fset
         self.fdel = fdel
@@ -146,7 +148,7 @@ class OnOff(TypeMapper):
     def typeFrom(self, value):
         if value is None:
             return None
-            
+
         value = value.lower()
         assert value in ("on", "off")
         return value == "on"

@@ -104,10 +104,31 @@ class ModifyVmFormatter(util.Formatter):
     maps rest kwargs to the named params directly.
     """
 
+    multiArgKeys = (
+        # List of keys that are followed by the multiple separate command line arguments
+        # The list to pass is represended by the list of values passed in the dictionary.
+        "uart1",
+        "uart2",
+        "uartmode1",
+        "uartmode2",
+    )
+
     def verify(self, data):
         "There is only one strict requirement -- 'target' must be present."
         if not data.has_key("target"):
             raise TypeError("'target' not provided.")
+
+    def castValues(self, data):
+        preserved = {}
+        for name in self.multiArgKeys:
+            try:
+                preserved[name] = data[name]
+            except KeyError:
+                pass
+        rv = super(ModifyVmFormatter, self).castValues(data)
+        rv.update(preserved)
+        return rv
+
 
 
 class ModifyVM(base.SubCommand):

@@ -9,6 +9,7 @@ from . import (
     guest,
     meta,
     network,
+    ports,
     props,
     storageController,
 )
@@ -102,6 +103,17 @@ class VM(base.Entity):
         return tuple(out)
 
     @props.SourceProperty
+    def serial(self):
+        nameRe = re.compile("^uart(\d+)$")
+        out = []
+        for name in self.source.info.iterkeys():
+            match = nameRe.match(name)
+            if match:
+                out.append(ports.Serial(self, int(match.group(1))))
+        out.sort(key=lambda port: port.idx)
+        return tuple(out)
+
+    @props.SourceProperty
     def bootOrder(self):
         data = {}
         nameRe = re.compile("^boot(\d+)$")
@@ -156,6 +168,7 @@ class VM(base.Entity):
         while (not self.state.mutable) and timeOk():
             time.sleep(0.2)
             self.source.clearCache()
+
 
         return self.state.mutable
 

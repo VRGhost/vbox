@@ -1,6 +1,7 @@
 from . import (
     base,
     network,
+    ports,
     storage,
 )
 
@@ -18,6 +19,7 @@ class VM(base.ConfigEntity):
     subConfigs = {
         "media": storage.Controller,
         "network": network.Network,
+        "serial": ports.Serial,
     }
 
     def fromDict(self, data, force=False):

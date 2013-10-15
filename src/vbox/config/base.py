@@ -1,4 +1,8 @@
+import logging
+
 from . import exceptions
+
+log = logging.getLogger(__name__)
 
 class ConfigEntity(object):
 
@@ -78,6 +82,7 @@ class ConfigEntity(object):
             try:
                 setattr(obj, name, value)
             except AttributeError:
+                log.exception("Unable to assign value {!r} to {!r}.{!r}".format(value, obj, name))
                 raise AttributeError("Unable to set attribute {!r}.{!r}".format(obj, name))
             remainingAttrs.remove(name)
 

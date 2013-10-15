@@ -51,7 +51,11 @@ class Formatter(object):
         def _add(key, value):
             if key not in unnamed:
                 out.append("--{}".format(key))
-            if value is not None:
+            if value is None:
+                pass
+            elif is_container(value):
+                out.extend(value)
+            else:
                 out.append(value)
 
         # firstly, map positionals.
