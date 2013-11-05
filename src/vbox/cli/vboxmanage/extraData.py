@@ -12,8 +12,11 @@ class ExtraDataOutParser(util.parsers.Dummy):
     def __call__(self, args, output):
         assert output.endswith('\n')
         output = output[:-1]
-
         key = args[-1]
+
+        if output == "No value set!":
+            raise KeyError(key)
+
         rv = None
         if key == "enumerate":
             rv = []

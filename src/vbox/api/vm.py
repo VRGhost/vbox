@@ -63,7 +63,7 @@ class VM(base.Entity):
     cpuExecutionCap = props.Int(**props.modify("cpuexecutioncap"))
     memory = props.Int(**props.modify("memory"))
     videoMemory = props.Int(**props.modify("vram"))
-    osType = props.Str(**props.modify("ostype"))
+
 
     destroy = lambda s: s._source.destroy()
     registered = props.SourceProperty(
@@ -112,6 +112,26 @@ class VM(base.Entity):
                 out.append(ports.Serial(self, int(match.group(1))))
         out.sort(key=lambda port: port.idx)
         return tuple(out)
+
+    @props.SourceProperty
+    def osType(self):
+        """Return alternative names for this virtualbox os type."""
+        txtName = self.source.info.get("ostype")
+        for checkType in self.interface.host.knownOsTypes:
+            if txtName in (checkType.id, checkType.description):
+                return checkType
+        raise NotImplementedError(txtName)
+
+    @osType.setter
+    def osType(self, value):
+        if isinstance(value, basestring):
+            setVal = value
+        elif hasattr(value, "id"):
+            setVal = value.id
+        else:
+            raise NotImplementedError(value)
+
+        self.source.modify(ostype=setVal)
 
     @props.SourceProperty
     def bootOrder(self):

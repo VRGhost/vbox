@@ -78,7 +78,7 @@ class BoundCaching(Caching):
 
 def refreshed(func):
     """A bound caching function that is refreshed via 'refreshCallbacks' mechanism."""
-    name = "_refreshed_cache_for_{!r}".format(func.__name__)
+    name = "_refreshed_cache_for_{!r}_0x{:X}".format(func.__name__, id(func))
     def _wrapper(self, *args, **kwargs):
         try:
             handler = self.__dict__[name]

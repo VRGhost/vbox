@@ -52,7 +52,8 @@ class List(base.SubCommand):
             "bridgedifs", "hostonlyifs", "dhcpservers",
             "dvds", "floppies", "usbhost",
             ), util.parsers.Dicts()),
-        (gen_list_check("hostinfo", "systemproperties",
+        (gen_list_check(
+            "hostinfo", "systemproperties",
             ), util.parsers.Dict()),
         (gen_list_check("groups"), util.parsers.Strings()),
         (gen_list_check("vms", "runningvms"), ListVmsParser()),

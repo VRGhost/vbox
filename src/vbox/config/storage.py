@@ -40,6 +40,9 @@ class FloppyBus(Bus):
             if obj.findSlotOf(img) is None:
                 obj.attach(img, el.get("bootable", None))
 
+    def ensure(self, obj, data):
+        raise NotImplementedError
+
 class SataOrIdeBus(Bus):
 
     def setup(self, obj, data):
@@ -47,6 +50,12 @@ class SataOrIdeBus(Bus):
         for el in data:
             if not self._imgMatch(obj, el):
                 obj.attach(self._mkImg(el), el.get("bootable", None))
+
+    def ensure(self, obj, data):
+        obj = self.parentObjToMyObj(obj)
+        for el in data:
+            if not self._imgMatch(obj, el):
+                raise self.exceptions.EnsureMismatch(obj, obj.type, el, "<unknown>")
 
     def _imgMatch(self, cntrl, data):
         if "target" in data:
@@ -110,26 +119,24 @@ class Controller(base.SubConfigEntity):
     customHandlers = ("ide", "sata", "floppy")
 
     def setup_floppy(self, obj, data):
-        createKw = data.copy()
-        if "targets" in createKw:
-            targets = createKw.pop("targets")
-        else:
-            targets = ()
+        self._act("floppy", obj, data, mode="setup")
 
-        obj.ensureExist("floppy", createKw=createKw)
-
-        sub = FloppyBus(self)
-        if targets:
-            sub.setup(obj, targets)
+    def ensure_floppy(self, obj, data):
+        self._act("floppy", obj, data, mode="ensure")
 
     def setup_ide(self, obj, data):
-        self._setup_sata_or_ide("ide", obj, data)
+        self._act("ide", obj, data, mode="setup")
+
+    def ensure_ide(self, obj, data):
+        self._act("ide", obj, data, mode="ensure")
 
     def setup_sata(self, obj, data):
-        self._setup_sata_or_ide("sata", obj, data)
+        self._act("sata", obj, data, mode="setup")
 
+    def ensure_sata(self, obj, data):
+        self._act("sata", obj, data, mode="ensure")
 
-    def _setup_sata_or_ide(self, type, obj, data):
+    def _act(self, type, obj, data, mode):
         createKw = data.copy()
         if "targets" in createKw:
             targets = createKw.pop("targets")
@@ -139,12 +146,19 @@ class Controller(base.SubConfigEntity):
         obj.ensureExist(type, createKw=createKw)
 
         cls = {
+            "floppy": FloppyBus,
+            "ide": IdeBus,
             "sata": SataBus,
-            "ide": IdeBus
         }[type]
+
         sub = cls(self)
         if targets:
-            sub.setup(obj, targets)
+            if mode == "setup":
+                sub.setup(obj, targets)
+            elif mode == "ensure":
+                sub.ensure(obj, targets)
+            else:
+                raise NotImplementedError(mode)
 
     def parentObjToMyObj(self, vm):
         return vm.storageControllers

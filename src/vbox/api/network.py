@@ -16,7 +16,7 @@ class BoundNIC(base.SubEntity):
                 rv = None
             else:
                 rv = typ
-            return typ
+            return rv
         def fset(self, value):
             prev = self.type
 

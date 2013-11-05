@@ -10,11 +10,12 @@ class VM(base.ConfigEntity):
     setAttrs = (
         "acpi", "cpuCount", "cpuExecutionCap",
         "memory", "videoMemory",
-        "osType", "accelerate3d", "videoMemory",
+        "accelerate3d", "videoMemory",
         "groups",
     )
 
     ignoreKeys = ("name", )
+    customHandlers = ("osType", )
 
     subConfigs = {
         "media": storage.Controller,
@@ -31,6 +32,13 @@ class VM(base.ConfigEntity):
                 vmObj = self.api.vms.create(data["name"])
             self.setup(vmObj, data)
         return vmObj
+
+    def ensure_osType(self, vm, value):
+        if value not in (vm.osType.description, vm.osType.id):
+            raise self.exceptions.EnsureMismatch(vm, "osType", vm.osTypeNames(), value)
+
+    def setup_osType(self, vm, value):
+        vm.osType = value
 
 class VirtualBox(object):
 
