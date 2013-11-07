@@ -24,10 +24,13 @@ class VBox(object):
         self.debug = debug
         self.verbose = verbose or debug
 
-        toCheck = []
+        toCheck = set()
         if extraPath:
-            toCheck.extend(extraPath)
-        toCheck.extend(sys.path)
+            toCheck.update(extraPath)extraPath
+
+        osPath = os.environ.get("PATH")
+        if osPath:
+            toCheck.update(osPath.split(os.pathsep))
 
         # assemble layers
         self.popen = self._findInstall(toCheck)
