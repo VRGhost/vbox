@@ -12,51 +12,15 @@ from . import (
     ports,
     props,
     storageController,
+    vmState,
 )
-
-class State(base.SubEntity):
-
-    vm = None
-    cli = property(lambda s: s.vm.cli)
-
-    pause = lambda s: s.source.pause()
-    resume = lambda s: s.source.resume()
-    reset = lambda s: s.source.reset()
-    powerOff = lambda s: s.source.poweroff()
-    start = lambda s, **kw: s.source.start(**kw)
-
-    # Mutable state is when hardware parameters of VM can be changed.
-    mutable = property(lambda s: s.val in ("poweroff", "aborted"))
-
-    knownStates = (
-        None, # VirtualBox was not ready to provide valid vm info.
-        "running", "paused", "poweroff",
-        "aborted", "stopping", "saved",
-    )
-
-    @props.SourceProperty
-    def val(self):
-        try:
-            rv = self.source.info.get("VMState")
-        except self.source.cli.exceptions.ParsedVboxError as err:
-            if err.errorName == "E_ACCESSDENIED":
-                rv = None
-            else:
-                raise
-
-        assert rv in self.knownStates, repr(rv)
-        return rv
-
-    for name in knownStates:
-        if name:
-            locals()["is{}".format(name.title())] = (lambda X: (lambda s: s.val == X))(name)
-    del name
 
 class VM(base.Entity):
     """Virtual machine entity."""
 
     UUID = props.Str(lambda s: s.source.info.get("UUID"))
     name = props.Str(lambda s: s.source.info.get("name"))
+    configFile = props.Str(lambda s: s.source.info["CfgFile"])
 
     acpi = props.OnOff(**props.modify("acpi"))
     cpuCount = props.Int(**props.modify("cpus"))
@@ -82,7 +46,7 @@ class VM(base.Entity):
 
         self.storageControllers = storageController.Library(self)
         self.storage = storageController.DriveAccessor(self.storageControllers)
-        self.state = State(self)
+        self.state = vmState.State(self)
         self.meta = meta.Meta(self.source.extraData)
         self.guest = guest.GuestAdditions(self)
 

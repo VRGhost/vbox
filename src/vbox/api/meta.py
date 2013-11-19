@@ -11,7 +11,10 @@ class MetaDict(collections.MutableMapping):
         self._data = data
 
     def __getitem__(self, name):
-        return self._data[name]
+        rv = self._data[name]
+        if isinstance(rv, collections.MutableMapping):
+            rv = self.__class__(rv, lambda el: self._onChange(name))
+        return rv
 
     def __setitem__(self, name, value):
         self._data[name] = value
@@ -66,8 +69,7 @@ class Meta(base.SourceObjectProxy, collections.MutableMapping):
         return rv
 
     def __setitem__(self, key, value):
-        if isinstance(value, MetaDict):
-            value = dict(value)
+        value = self._stripMetaDict(value)
         strValue = pickle.dumps(value, pickle.HIGHEST_PROTOCOL).encode("zip").encode("base64")
         strValue = "".join(strValue.split())
         self.source.set(key, self.picklePrefix + strValue)
@@ -83,6 +85,21 @@ class Meta(base.SourceObjectProxy, collections.MutableMapping):
 
     def _onDictChanged(self, key, value):
         self[key] = value
+
+    def _stripMetaDict(self, value):
+        strip = self._stripMetaDict
+
+        if isinstance(value, MetaDict):
+            value = dict(value)
+
+        if isinstance(value, dict):
+            rv = dict((strip(key), strip(value)) for (key, value) in value.items())
+        elif isinstance(value, (list, tuple)):
+            rv = value.__class__(strip(el) for el in value)
+        else:
+            rv = value
+
+        return rv
 
     def _sessionCommit(self, obj, data, changed):
         for name in changed:

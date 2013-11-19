@@ -1,4 +1,8 @@
-from . import base, props
+from . import (
+    base,
+    props,
+    exceptions,
+)
 
 class BoundNIC(base.SubEntity):
     """NIC bound to the VM."""
@@ -28,6 +32,8 @@ class BoundNIC(base.SubEntity):
                 if available:
                     # Set try to bind adapter simultaniously with the adapter type
                     kw[self._getAdapterPropName(value)] = available[0]
+                else:
+                    raise exceptions.ConfigurationError("Unable to auto-suggest network interface for {!r}".format(value))
 
                 if not prev:
                     # If this adapter is being created from nothing, ensure that cable is connected by default.

@@ -29,3 +29,9 @@ class ExecuteError(GuestException):
 
 class ExecuteTimeout(ExecuteError):
     pass
+
+class StateTransitionError(ApiError):
+    pass
+
+class ConfigurationError(ApiError):
+    pass

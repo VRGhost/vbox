@@ -26,7 +26,7 @@ class VBox(object):
 
         toCheck = set()
         if extraPath:
-            toCheck.update(extraPath)extraPath
+            toCheck.update(extraPath)
 
         osPath = os.environ.get("PATH")
         if osPath:
