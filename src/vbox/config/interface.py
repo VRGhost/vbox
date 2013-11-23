@@ -1,5 +1,6 @@
 from . import (
     base,
+    shared,
     network,
     ports,
     storage,
@@ -21,6 +22,7 @@ class VM(base.ConfigEntity):
         "media": storage.Controller,
         "network": network.Network,
         "serial": ports.Serial,
+        "shared": shared.Shared,
     }
 
     def fromDict(self, data, force=False):

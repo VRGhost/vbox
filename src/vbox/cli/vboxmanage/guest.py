@@ -168,3 +168,11 @@ class GuestControl(NoKwargCmd):
             raise self.exceptions.TooManyGuestSessions(int(match.group(1)))
         else:
             return super(GuestControl, self)._onErrOutput(args, cmd, rc, out)
+
+class SharedFolder(base.SubCommand):
+
+    formatter = util.Formatter(
+        all=("target", "action", "name", "hostpath"),
+        mandatory=("target", "action", "name"),
+        positional=("{action}", "{target}", ),
+    )

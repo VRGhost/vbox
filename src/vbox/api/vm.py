@@ -11,6 +11,7 @@ from . import (
     network,
     ports,
     props,
+    shared,
     storageController,
     vmState,
 )
@@ -49,6 +50,7 @@ class VM(base.Entity):
         self.state = vmState.State(self)
         self.meta = meta.Meta(self.source.extraData)
         self.guest = guest.GuestAdditions(self)
+        self.shared = shared.SharedFolderAccessor(self)
 
     def destroy(self):
         self.registered = True

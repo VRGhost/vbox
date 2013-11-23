@@ -92,7 +92,7 @@ class BoundNIC(base.SubEntity):
             type = self.type
 
         if type == "hostonly":
-            rv = [el["Name"] for el in self.interface.networking.hostOnlyInterfaces]
+            rv = [el.name for el in self.interface.networking.hostOnlyInterfaces]
         elif type == "bridged":
             rv = [el["Name"] for el in self.interface.networking.bridgedInterfaces]
         else:
@@ -119,13 +119,51 @@ class BoundNIC(base.SubEntity):
     def __repr__(self):
         return "<{}#{} for {!r}>".format(self.__class__.__name__, self.idx, self.parent)
 
+class HostOnlyInterface(base.Entity):
+    """Host only interface."""
+
+    remove = lambda s: s.source.remove()
+    info = props.SourceProperty(lambda s: s.source.info)
+    name = props.Str(lambda s: s.info["Name"])
+    fqn = props.Str(lambda s: s.info["VBoxNetworkName"])
+    mac = props.Str(lambda s: s.info["HardwareAddress"])
+
+    dhcp = props.SourceProperty(
+        lambda s: s.info["DHCP"],
+        lambda s, v: s.source.set(dhcp=v),
+    )
+
+    ipv4 = props.Str(
+        lambda s: s.info["IPAddress"],
+        lambda s, v: s.source.set(ip=v, netmask=s.ipv4Mask),
+    )
+    ipv4Mask = props.Str(
+        lambda s: s.info["NetworkMask"],
+        lambda s, v: s.source.set(ip=s.ipv4, netmask=v),
+    )
+
+    ipv6 = props.Str(
+        lambda s: s.infp["IPV6Address"],
+        lambda s, v: s.source.set(ipv6=v, netmasklengthv6=s.ipv6Mask),
+    )
+    ipv6Mask = props.Str(
+        lambda s: s.info["IPV6NetworkMaskPrefixLength"],
+        lambda s, v: s.source.set(ipv6=s.ipv6, netmasklengthv6=v),
+    )
 
 class Library(base.Library):
 
     @props.SourceProperty
     def hostOnlyInterfaces(self):
-        return self.source.hostOnlyInterfaces
+        return tuple(
+            HostOnlyInterface(obj, self)
+            for obj in self.source.hostOnlyInterfaces
+        )
 
     @props.SourceProperty
     def bridgedInterfaces(self):
         return self.source.bridgedInterfaces
+
+    def newHostOnlyInterface(self):
+        obj = self.source.createHostOnlyInterface()
+        return HostOnlyInterface(obj, self)

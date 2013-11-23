@@ -32,3 +32,11 @@ class TooManyGuestSessions(exceptions.BaseException):
             "Maximum number of guest sessions ({}) reached.".format(maxCnt)
         )
         self.maxCount = maxCnt
+
+class UnexpectedOutput(exceptions.BaseException):
+
+    def __init__(self, msg, receivedOutput):
+        super(UnexpectedOutput, self).__init__(
+            "Unexpected outpt: {} ({!r})".format(msg, receivedOutput)
+        )
+        self.output = receivedOutput

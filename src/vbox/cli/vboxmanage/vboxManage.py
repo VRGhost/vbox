@@ -2,6 +2,7 @@ from .. import base
 from . import (
     extraData,
     guest,
+    hostNics,
     manage_list,
     storage,
     vm,
@@ -46,6 +47,10 @@ class VBoxManage(base.RealCommand):
             # Guest stuff
             guest.GuestProperty,
             guest.GuestControl,
+            guest.SharedFolder,
+
+            # Host network adapter management
+            hostNics.HostOnlyIf,
         ):
             obj = cls(self.interface, self)
             name = cls.__name__

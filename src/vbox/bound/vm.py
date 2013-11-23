@@ -37,6 +37,10 @@ class VM(base.Entity):
         return rv
 
     @refreshing
+    def sharedFolder(self, **kwargs):
+        self.cli.manage.sharedFolder(target=self.id, **kwargs)
+
+    @refreshing
     def create(self, **kwargs):
         realKw = {
             "register": True,
