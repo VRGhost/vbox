@@ -1,4 +1,5 @@
 import re
+import os
 
 from . import (
     base,
@@ -42,6 +43,10 @@ class SharedFolder(base.SubEntity):
 class SharedFolderAccessor(base.SubEntity):
 
     def set(self, name, path):
+        if not os.path.isdir(path):
+            raise self.exceptions.ConfigurationError(
+                "{!r} is not a directory.".format(path)
+            )
         try:
             old = self.get(name)
         except KeyError:
