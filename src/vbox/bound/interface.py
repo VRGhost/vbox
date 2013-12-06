@@ -1,6 +1,7 @@
 from . import (
     dvd,
     exceptions,
+    extraData,
     floppy,
     hdd,
     host,
@@ -22,3 +23,4 @@ class VirtualBox(object):
         self.dvds = dvd.Library(self)
         self.floppies = floppy.Library(self)
         self.networking = network.Library(self)
+        self.extraData = extraData.ExtraData(self.cli, "global")

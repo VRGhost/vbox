@@ -69,6 +69,15 @@ class Meta(base.SourceObjectProxy, collections.MutableMapping):
         return rv
 
     def __setitem__(self, key, value):
+        try:
+            oldValue = self[key]
+        except KeyError:
+            pass
+        else:
+            # oldValue present
+            if oldValue == value:
+                return
+                
         value = self._stripMetaDict(value)
         strValue = pickle.dumps(value, pickle.HIGHEST_PROTOCOL).encode("zip").encode("base64")
         strValue = "".join(strValue.split())
