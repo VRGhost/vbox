@@ -47,11 +47,19 @@ class SharedFolderAccessor(base.SubEntity):
             raise self.exceptions.ConfigurationError(
                 "{!r} is not a directory.".format(path)
             )
+
+        path = os.path.abspath(path)
+
         try:
             old = self.get(name)
         except KeyError:
             pass
         else:
+            if old.path == path:
+                # shared folder already exists
+                return old
+
+            
             old.remove()
 
         self.source.sharedFolder(action="add", name=name, hostpath=path)

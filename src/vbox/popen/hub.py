@@ -3,7 +3,9 @@ import errno
 import logging
 import os
 import subprocess
+import tempfile
 import threading
+import time
 import traceback
 import warnings
 
@@ -20,34 +22,9 @@ from distutils.spawn import find_executable
 
 log = logging.getLogger(__name__)
 
-class _PipeReader(threading.Thread):
-
-    def __init__(self, pipe):
-        super(_PipeReader, self).__init__()
-        self.pipe = pipe
-        self.output = ""
-        self.daemon = True
-        self.terminated = False
-
-    def run(self):
-        while not self.terminated:
-            try:
-                read = self.pipe.read(512)
-            except (OSError, IOError) as err:
-                if err.errno == errno.EINTR:
-                    continue
-                else:
-                    raise
-
-            if read:
-                self.output += read
-            else:
-                # Pipe closed
-                break
-
 class BoundExecutable(object):
 
-    terminateTimeout = 2 # Delay between terminated process is killed with SIGKILL instead
+    terminateTimeout = 2 # Delay between terminated process is killed with SIGKILL
     killTimeout = 15 # Delay between kill is issued and the internal exception is raised.
 
     def __init__(self, hub, name):
@@ -63,41 +40,18 @@ class BoundExecutable(object):
         realCmd.extend(cmd)
         realCmd = tuple(realCmd)
         with self.hub.lock:
-            proc = subprocess.Popen(
-                args=realCmd,
-                stderr=subprocess.STDOUT,
-                stdout=subprocess.PIPE,
-                universal_newlines=True,
-            )
-            reader = _PipeReader(proc.stdout)
-
-            def isProcRunning():
-                isRunning1 = proc.poll() is None
-                if psutil:
-                    isRunning2 = psutil.pid_exists(proc.pid)
-                else:
-                    isRunning2 = True
-
-                return isRunning1 and isRunning2
-
-            reader.start()
-            reader.join(timeout)
-            if timeout and isProcRunning():
-                # There was a timeout set and the subprocess is still alive
-                try:
-                    proc.terminate()
-                except OSError as err:
-                    if err.errno == errno.EACCES:
-                        # on Windows attempting to terminate process that is already dead will cause 'access denied' exception
-                        pass
-                    else:
-                        raise
-
-                reader.join(self.terminateTimeout)
-                if isProcRunning():
-                    # timeout passed, `proc` is still alive
+            with tempfile.NamedTemporaryFile() as fobj:
+                proc = subprocess.Popen(
+                    args=realCmd,
+                    stderr=subprocess.STDOUT,
+                    stdout=fobj,
+                    universal_newlines=True,
+                )
+ 
+                if not self.procWait(proc, timeout):
+                    # There was a timeout set and the subprocess is still alive
                     try:
-                        proc.kill()
+                        proc.terminate()
                     except OSError as err:
                         if err.errno == errno.EACCES:
                             # on Windows attempting to terminate process that is already dead will cause 'access denied' exception
@@ -105,27 +59,58 @@ class BoundExecutable(object):
                         else:
                             raise
 
-                    reader.join(self.killTimeout)
+                    if not self.procWait(proc, self.terminateTimeout):
+                        # terminate signal failed.
+                        # timeout passed, `proc` is still alive
+                        try:
+                            proc.kill()
+                        except OSError as err:
+                            if err.errno == errno.EACCES:
+                                # on Windows attempting to terminate process that is already dead will cause 'access denied' exception
+                                pass
+                            else:
+                                raise
+                        
+                        if not self.procWait(proc, self.killTimeout):
+                            raise local_exceptions.PopenError("Unable to terminate/kill {!r}".format(cmd))
+                
+                    raise local_exceptions.TimeoutException(cmd)
 
-                    if isProcRunning():
-                        raise local_exceptions.PopenError("Unable to terminate/kill {!r}".format(cmd))
-                # Here, it is assumed that the subprocess is no longer alive
-                reader.terminated = True
-                reader.join(self.terminateTimeout)
-                assert not reader.isAlive(), "Reader should really, really be dead by now. There should be no way it goes to the infinite loop."
-
-                raise local_exceptions.TimeoutException(cmd)
-
-            elif not timeout:
-                proc.wait()
-
-        out = reader.output
-        returncode = proc.poll()
-        if returncode is None:
-            # Something went bad in the code
-            returncode = float("Inf")
+                fobj.seek(0, 0)
+                out = fobj.read()
+                returncode = proc.poll()
+                if returncode is None:
+                    # Something went bad in the code
+                    returncode = float("Inf")
 
         return (realCmd, returncode, out)
+
+    def isProcRunning(self, proc):
+        isRunning1 = proc.poll() is None
+        if psutil:
+            isRunning2 = psutil.pid_exists(proc.pid)
+        else:
+            isRunning2 = True
+
+        return isRunning1 and isRunning2
+
+    def procWait(self, proc, timeout):
+        if timeout:
+            endTime = time.time() + timeout
+            while time.time() < endTime:
+                if self.isProcRunning(proc):
+                    time.sleep(0.5)
+                else:
+                    # Monitored process terminated
+                    break
+            else:
+                # No 'break', return 'False' if exit is by timeout
+                return not self.isProcRunning(proc)
+        else:
+            proc.wait()
+        
+        return True
+
 
 
     def __repr__(self):

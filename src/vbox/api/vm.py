@@ -79,25 +79,33 @@ class VM(base.Entity):
         out.sort(key=lambda port: port.idx)
         return tuple(out)
 
+    def _mapOsType(self, data):
+        if isinstance(data, basestring):
+            matcher = data
+        elif hasattr(data, "id"):
+            matcher = data.id
+        else:
+            raise NotImplementedError(data)
+        for checkType in self.interface.host.knownOsTypes:
+            if matcher in (checkType.id, checkType.description):
+                return checkType
+        raise KeyError([data, matcher])
+
     @props.SourceProperty
     def osType(self):
         """Return alternative names for this virtualbox os type."""
         txtName = self.source.info.get("ostype")
-        for checkType in self.interface.host.knownOsTypes:
-            if txtName in (checkType.id, checkType.description):
-                return checkType
-        raise NotImplementedError(txtName)
+        return self._mapOsType(txtName)
 
     @osType.setter
     def osType(self, value):
-        if isinstance(value, basestring):
-            setVal = value
-        elif hasattr(value, "id"):
-            setVal = value.id
-        else:
-            raise NotImplementedError(value)
+        old = self.osType
+        new = self._mapOsType(value)
 
-        self.source.modify(ostype=setVal)
+        if old == new:
+            return
+
+        self.source.modify(ostype=new.id)
 
     @props.SourceProperty
     def bootOrder(self):
