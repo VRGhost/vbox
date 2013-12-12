@@ -1,9 +1,12 @@
 import threading
 
+
+import vbox.base
+
 from ..exceptions import ExceptionCatcher
 from . import exceptions
 
-class SourceObjectProxy(object):
+class SourceObjectProxy(vbox.base.CacheChain):
 
     exceptions = exceptions
     _source = _sourceDependants = None
@@ -14,31 +17,10 @@ class SourceObjectProxy(object):
         self._cacheClearDependants = set()
         self._sourceCacheUpdateDependants = set()
         self._source = ExceptionCatcher(sourceObject, self._onSourceException)
-        self.source.addCacheClearCallback(self._onSourceCacheClear)
-        self.source.addCacheUpdateCallback(self._onSourceCacheUpdate)
-
-    def addCacheClearCallback(self, func):
-        self._cacheClearDependants.add(func)
-
-    def addCacheUpdateCallback(self, func):
-        self._sourceCacheUpdateDependants.add(func)
-
-    def clearCache(self, src):
-        for el in self._cacheClearDependants:
-            el(self)
-
-    def _onSourceCacheClear(self, src):
-        self.clearCache(src)
-
-    def _onSourceCacheUpdate(self, src):
-        for el in self._sourceDependants:
-            el.cacheUpdated(src)
+        self.source.addSubscriber(self)
 
     def _onSourceException(self, exc):
         """Called when source call raises an exception."""
-
-    def registerTrail(self, dep):
-        self.addCacheClearCallback(dep.clearCache)
 
     def __eq__(self, other):
         try:
@@ -50,49 +32,16 @@ class SourceObjectProxy(object):
     def __repr__(self):
         return "<{}.{} 0x{:X} {!r}>".format(self.__module__, self.__class__.__name__, id(self), self.source)
 
-class ProxyRefreshTrail(object):
+class ProxyRefreshTrail(vbox.base.Cacher):
     """Function that caches its result and resets its cache when any of source objects are refreshed.
     """
 
-    _func = version = None
-
     def __init__(self, func, depends=()):
-        super(ProxyRefreshTrail, self).__init__()
+        super(ProxyRefreshTrail, self).__init__(func)
         assert callable(func)
-        self._func = func
-        self._cacheLock = threading.Lock()
         assert depends, "Must define at least one source. Provided: {}".format(depends)
         for el in depends:
-            el.registerTrail(self)
-
-
-    def __call__(self):
-        return self._callHandle()
-
-    def _callHandle(self):
-        try:
-            return self._cache
-        except AttributeError:
-            with self._cacheLock:
-                # Trye reading cache once again - somebody might have changed it.
-                try:
-                    return self._cache
-                except AttributeError:
-                    self._cache = self._doRealCall()
-                    return self._cache
-
-    def _doRealCall(self):
-        return self._func()
-
-    def clearCache(self, src):
-        with self._cacheLock:
-            try:
-                del self._cache
-            except AttributeError:
-                pass
-
-    def __repr__(self):
-        return "<{}({!r})>".format(self.__class__.__name__, self._func)
+            el.addSubscriber(self)
 
 class Entity(SourceObjectProxy):
 

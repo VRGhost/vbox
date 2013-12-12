@@ -6,60 +6,13 @@ import threading
 from ..exceptions import ExceptionCatcher
 from . import exceptions
 
+import vbox.base
+
 _EMPTY_ = object()
 
-CallArgs = collections.namedtuple("CallArgs", ["args", "kwargs"])
-MAX_VERSION = sys.maxint
+class Caching(vbox.base.Cacher):
 
-class Caching(object):
-    """Base API object that provided caching primitives.
-
-    Important public fields:
-        `version` - contains ID of the current version of the contents. Allows for external object to peek into the expected return value of
-            this object: will it be the same (`version` field unchanged) or can be different (`version` field changed).
-
-    """
-
-    _backendFn = version = _cache = None
-
-    def __init__(self, backendFn):
-        super(Caching, self).__init__()
-        self._cache = {}
-
-        assert callable(backendFn)
-        self._backendFn = backendFn
-        self.version = 1
-        self._cacheLock = threading.Lock()
-
-    def __call__(self, *args, **kwargs):
-        return self._callHandle(args, kwargs)
-
-    def _callHandle(self, args, kwargs):
-        key = CallArgs(tuple(args), frozenset(kwargs.items()))
-        try:
-            value = self._cache[key]
-        except KeyError:
-            with self._cacheLock:
-                # Trye reading cache once again - somebody might have changed it.
-                try:
-                    value = self._cache[key]
-                except KeyError:
-                    value = self._cache[key] = self._doRealCall(args, kwargs)
-        return value
-
-    def _doRealCall(self, args, kwargs):
-        return self._backendFn(*args, **kwargs)
-
-    def clearCache(self):
-        self.version += 1
-        if self.version >= MAX_VERSION:
-            # Rollover!
-            self.version = 1
-        with self._cacheLock:
-            self._cache.clear()
-
-    def __repr__(self):
-        return "<{}({!r})>".format(self.__class__.__name__, self._backendFn)
+    exceptions = exceptions
 
 class BoundCaching(Caching):
     """A caching object that is bound to another object that it passes as 'self' to the function it is controlling."""
@@ -84,7 +37,7 @@ def refreshed(func):
             handler = self.__dict__[name]
         except KeyError:
             handler = BoundCaching(func, self)
-            self.addCacheClearCallback(lambda s: handler.clearCache())
+            self.addSubscriber(handler)
             self.__dict__[name] = handler # This will effectivly prohibit successive '_wrapper' calls and will force for 'handler' to be called instead.
 
         return handler(*args, **kwargs)
@@ -96,38 +49,10 @@ def refreshedProperty(func):
     fn2 = functools.wraps(handle)(fn1)
     return property(fn2)
 
-class Refreshable(object):
+class Refreshable(vbox.base.CacheChain):
     """An object that can uses caching and thus can be refreshed."""
 
-    refreshCallbacks = None
     exceptions = exceptions
-
-    def __init__(self):
-        super(Refreshable, self).__init__()
-        self.cacheClearCallbacks = []
-        self.cacheUpdateCallbacks = []
-
-    def addCacheClearCallback(self, cb):
-        self.cacheClearCallbacks.append(cb)
-
-    def addCacheUpdateCallback(self, cb):
-        self.cacheUpdateCallbacks.append(cb)
-
-    def clearCache(self):
-        self.onCacheClear()
-
-    def onCacheClear(self):
-        """Order a refresh all cached properties of this object."""
-        for cb in self.cacheClearCallbacks:
-            cb(self)
-
-    def onCacheUpdate(self):
-        """Order a refresh all cached properties of this object."""
-        for cb in self.cacheUpdateCallbacks:
-            cb(self)
-
-    def __repr__(self):
-        return "<{}.{} {:X}>".format(self.__module__, self.__class__.__name__, id(self))
 
 
 class CliAccessor(Refreshable):
@@ -157,6 +82,7 @@ class Library(CliAccessor):
         super(Library, self).__init__(root.cli)
         self.root = root
         self.objects = []
+        self.root.addSubscriber(self)
 
     def listRegistered(self):
         """Return all objects of this type that VirtualBox has present in its registry."""
@@ -219,6 +145,7 @@ class Entity(CliAccessor):
         self.id = id
         self.library = library
         self.root = library.root
+        self.library.addSubscriber(self)
 
     def is_(self, challange):
         """Return 'True' is this object is the one that is hiding under 'challange'."""

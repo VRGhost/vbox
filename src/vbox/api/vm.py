@@ -28,6 +28,7 @@ class VM(base.Entity):
     cpuExecutionCap = props.Int(**props.modify("cpuexecutioncap"))
     memory = props.Int(**props.modify("memory"))
     videoMemory = props.Int(**props.modify("vram"))
+    usb = props.OnOff(**props.modify("usb"))
 
 
     destroy = lambda s: s._source.destroy()

@@ -12,7 +12,7 @@ class VM(base.ConfigEntity):
         "acpi", "cpuCount", "cpuExecutionCap",
         "memory", "videoMemory",
         "accelerate3d", "videoMemory",
-        "groups",
+        "groups", "usb",
     )
 
     ignoreKeys = ("name", )

@@ -1,6 +1,8 @@
 import logging
 import os
 import sys
+import threading
+import time
 
 from . import (
     api,
@@ -12,6 +14,33 @@ from . import (
 )
 
 log = logging.getLogger(__name__)
+
+class TimeCounter(threading.Thread):
+
+    resoultion = 2 # seconds
+
+    def __init__(self, callback):
+        super(TimeCounter, self).__init__(
+            name="vbox.bound.interface.TimeCounter"
+        )
+        self._cb = callback
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        while True:
+            res = self.resoultion
+            delta = res / 2.0
+
+            start = time.time()
+            time.sleep(res)
+            end = time.time()
+            period = end - start
+            if (period < (res - delta)) or (period > (res + delta)):
+                # Assume system time changed,
+                # using fallback value for 'period'
+                period = res
+            self._cb(period)
 
 class VBox(object):
 
@@ -40,6 +69,7 @@ class VBox(object):
         self.config = config.VirtualBox(self.api)
         # end layer assembly
         self.installRoot = self.popen.root
+        self._ticker = TimeCounter(self._onTimeTick)
 
     def _findInstall(self, dirs):
         for testDir in dirs:
@@ -58,6 +88,10 @@ class VBox(object):
     @classmethod
     def fromDict(cls, data):
         return cls(**data)
+
+    def _onTimeTick(self, period):
+        for obj in (self.bound, self.api):
+            obj.onTimeTick(period)
 
     def __repr__(self):
         return "<{} installRoot={!r}>".format(self.__class__.__name__, self.installRoot)

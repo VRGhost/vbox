@@ -6,11 +6,12 @@ class GuestEl(base.CliAccessor):
         super(GuestEl, self).__init__(vm.cli)
         self.vm = vm
         self.id = vm.id
-        self.vm.addCacheClearCallback(self._onVmRefresh)
+        self.vm.addSubscriber(self)
 
-    def _onVmRefresh(self, vm):
-        assert vm is self.vm
-        self.clearCache()
+    def onCacheUpdate(self, who):
+        super(GuestEl, self).onCacheUpdate(who)
+        if who is self.vm:
+            self.clearCache()
 
 class GuestProperties(GuestEl):
 

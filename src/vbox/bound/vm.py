@@ -17,10 +17,8 @@ class VM(base.Entity):
 
     def __init__(self, *args, **kwargs):
         super(VM, self).__init__(*args, **kwargs)
-
         self.extraData = extraData.ExtraData(self.root.cli, self.id)
         self.guest = guest.Guest(self)
-        self.addCacheUpdateCallback(self._bindImmutableData)
 
     @base.refreshedProperty
     def info(self):
@@ -107,6 +105,15 @@ class VM(base.Entity):
                 pass
 
         return False
+
+
+    def onCacheUpdate(self, who):
+        """An event callback that tells this object that
+        another object had cleared its cache.
+        """
+        super(VM, self).onCacheUpdate(who)
+        if who is self:
+            self._bindImmutableData()
 
     _configFile = None
     def _bindImmutableData(self, subj):

@@ -1,15 +1,18 @@
+import vbox.base
+
 from . import (
     dvd,
     exceptions,
     floppy,
     hdd,
     host,
-    network,
-    vm,
     meta,
+    network,
+    usb,
+    vm,
 )
 
-class VirtualBox(object):
+class VirtualBox(vbox.base.CacheChain):
 
     exceptions = exceptions
 
@@ -23,6 +26,7 @@ class VirtualBox(object):
         self.dvds = dvd.Library(self.source.dvds, self)
         self.floppies = floppy.Library(self.source.floppies, self)
         self.networking = network.Library(self.source.networking, self)
+        self.usb = usb.Library(self.source.usb, self)
         self._globalExtraData = meta.Meta(self.source.extraData)
 
     def extraData(self, name):
