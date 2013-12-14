@@ -97,6 +97,12 @@ class ControlVM(base.SubCommand):
     def savestate(self, name):
         return self(name, "savestate")
 
+    def usbattach(self, name, target):
+        return self(name, "usbattach", target)
+
+    def usbdetach(self, name, target):
+        return self(name, "usbdetach", target)
+
 class ModifyVmFormatter(util.Formatter):
     """Modify VM has too many fields for me to bother defining them.
 

@@ -17,35 +17,27 @@ class Caching(vbox.base.Cacher):
 class BoundCaching(Caching):
     """A caching object that is bound to another object that it passes as 'self' to the function it is controlling."""
 
-    def __init__(self, backendFn, obj):
-        super(BoundCaching, self).__init__(backendFn)
+    def __init__(self, backendFn, obj, maxCacheAge=None):
+        super(BoundCaching, self).__init__(backendFn, maxCacheAge=maxCacheAge)
         self.boundTo = obj
+        obj.addSubscriber(self)
 
-    def _callHandle(self, args, kwargs):
+    def _doRealCall(self, args, kwargs):
         boundArgs = [self.boundTo]
         boundArgs.extend(args)
-        return super(BoundCaching, self)._callHandle(boundArgs, kwargs)
+        return super(BoundCaching, self)._doRealCall(boundArgs, kwargs)
 
-    def __repr__(self):
-        return "<{}({!r}.{!r})>".format(self.__class__.__name__, self.boundTo, self._backendFn)
-
-def refreshed(func):
+@vbox.base.decorators.parametricDecorator
+def refreshed(func, maxCacheAge=None):
     """A bound caching function that is refreshed via 'refreshCallbacks' mechanism."""
-    name = "_refreshed_cache_for_{!r}_0x{:X}".format(func.__name__, id(func))
-    def _wrapper(self, *args, **kwargs):
-        try:
-            handler = self.__dict__[name]
-        except KeyError:
-            handler = BoundCaching(func, self)
-            self.addSubscriber(handler)
-            self.__dict__[name] = handler # This will effectivly prohibit successive '_wrapper' calls and will force for 'handler' to be called instead.
+    return vbox.base.decorators.BindingDescriptor(
+        lambda self: BoundCaching(func, self, maxCacheAge=maxCacheAge)
+    )
 
-        return handler(*args, **kwargs)
-    return functools.wraps(func)(_wrapper)
-
-def refreshedProperty(func):
-    handle = refreshed(func)
-    fn1 = lambda self: handle(self)
+@vbox.base.decorators.parametricDecorator
+def refreshedProperty(func, **kwargs):
+    handle = refreshed(func, **kwargs)
+    fn1 = lambda self: handle.getBoundObject(self)()
     fn2 = functools.wraps(handle)(fn1)
     return property(fn2)
 

@@ -40,8 +40,14 @@ class ProxyRefreshTrail(vbox.base.Cacher):
         super(ProxyRefreshTrail, self).__init__(func)
         assert callable(func)
         assert depends, "Must define at least one source. Provided: {}".format(depends)
-        for el in depends:
+        self.depends = tuple(depends)
+        for el in self.depends:
             el.addSubscriber(self)
+
+    def onCacheUpdate(self, who):
+        super(ProxyRefreshTrail, self).onCacheUpdate(who)
+        if who in self.depends:
+            self.clearCache()
 
 class Entity(SourceObjectProxy):
 

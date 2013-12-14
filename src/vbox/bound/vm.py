@@ -86,6 +86,9 @@ class VM(base.Entity):
     resume = refreshing(lambda s: s.cli.manage.controlVM.resume(s.id))
     pause = refreshing(lambda s: s.cli.manage.controlVM.pause(s.id))
 
+    usbAttach = refreshing(lambda s, what: s.cli.manage.controlVM.usbattach(s.id, what))
+    usbDetach = refreshing(lambda s, what: s.cli.manage.controlVM.usbdetach(s.id, what))
+
     def onCliCallError(self, err):
         if isinstance(err, self.cli.exceptions.ParsedVboxError) \
         and ("NOT_FOUND" in err.errorName.upper()) \

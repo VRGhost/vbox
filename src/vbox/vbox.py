@@ -28,11 +28,12 @@ class TimeCounter(threading.Thread):
         self.start()
 
     def run(self):
+        start = time.time()
+
         while True:
             res = self.resoultion
             delta = res / 2.0
 
-            start = time.time()
             time.sleep(res)
             end = time.time()
             period = end - start
@@ -41,6 +42,9 @@ class TimeCounter(threading.Thread):
                 # using fallback value for 'period'
                 period = res
             self._cb(period)
+
+            # start period for the next iteration is end period for a previous one.
+            start = end
 
 class VBox(object):
 

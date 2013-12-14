@@ -34,6 +34,20 @@ class ExceptionCatcher(object):
             setattr(self, name, rv)
         return rv
 
+    def getTargetObject(self):
+        rv = self._proxy
+        while isinstance(rv, ExceptionCatcher):
+            rv = rv._proxy
+        return rv
+        
+    def __eq__(self, other):
+        my = self.getTargetObject()
+        if isinstance(other, ExceptionCatcher):
+            rv = (my == other.getTargetObject())
+        else:
+            rv = (my == other)
+        return rv
+
 
     def __repr__(self):
         return "<{} {!r}>".format(self.__class__.__name__, self._proxy)

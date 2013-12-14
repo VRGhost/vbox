@@ -13,6 +13,7 @@ from . import (
     props,
     shared,
     storageController,
+    usb,
     vmState,
 )
 
@@ -28,8 +29,6 @@ class VM(base.Entity):
     cpuExecutionCap = props.Int(**props.modify("cpuexecutioncap"))
     memory = props.Int(**props.modify("memory"))
     videoMemory = props.Int(**props.modify("vram"))
-    usb = props.OnOff(**props.modify("usb"))
-
 
     destroy = lambda s: s._source.destroy()
     registered = props.SourceProperty(
@@ -52,6 +51,7 @@ class VM(base.Entity):
         self.meta = meta.Meta(self.source.extraData)
         self.guest = guest.GuestAdditions(self)
         self.shared = shared.SharedFolderAccessor(self)
+        self.usb = usb.VmUsb(self)
 
     def destroy(self):
         self.registered = True
