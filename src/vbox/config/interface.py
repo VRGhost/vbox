@@ -1,9 +1,10 @@
 from . import (
     base,
-    shared,
     network,
     ports,
+    shared,
     storage,
+    usb,
 )
 
 class VM(base.ConfigEntity):
@@ -12,7 +13,7 @@ class VM(base.ConfigEntity):
         "acpi", "cpuCount", "cpuExecutionCap",
         "memory", "videoMemory",
         "accelerate3d", "videoMemory",
-        "groups", "usb",
+        "groups",
     )
 
     ignoreKeys = ("name", )
@@ -23,6 +24,7 @@ class VM(base.ConfigEntity):
         "network": network.Network,
         "serial": ports.Serial,
         "shared": shared.Shared,
+        "usb": usb.Usb,
     }
 
     def fromDict(self, data, force=False):

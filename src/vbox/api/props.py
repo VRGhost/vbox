@@ -70,7 +70,7 @@ class SourceProperty(object):
             except AttributeError:
                 pass
             else:
-                handle.clearCache(self)
+                handle.clearCache()
 
     def getTargetPropName(self, obj):
         return "_{!r}({!r})_getter_for_{!r}({!r})".format(
