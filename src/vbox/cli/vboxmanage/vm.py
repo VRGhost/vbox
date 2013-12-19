@@ -4,6 +4,8 @@ Virtual machine-related commands
 
 """
 
+import re
+
 from .. import (
     base,
     util,
@@ -12,6 +14,22 @@ from .. import (
 class VMInfoParser(util.parsers.Dict):
 
     sep = '='
+    rtcOffsetRe = re.compile(r'(\d+)rtcuseutc="(\w+)"')
+
+    def _parseItems(self, output):
+        for (key, value) in super(VMInfoParser, self)._parseItems(output):
+            if key == "Time offset":
+                # For some reason, vboxmanage joins "rtcuseutc"
+                # with the "Time offset" value
+                match = self.rtcOffsetRe.match(value)
+                if match:
+                    yield (key, match.group(1))
+                    yield ("rtcuseutc", match.group(2))
+                else:
+                    # Something has changed in the output format?
+                    yield (key, value)
+            else:
+                yield (key, value)
 
 class ShowVMInfo(base.SubCommand):
 

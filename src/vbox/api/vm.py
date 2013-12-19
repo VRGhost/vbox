@@ -29,7 +29,7 @@ class VM(base.Entity):
     cpuExecutionCap = props.Int(**props.modify("cpuexecutioncap"))
     memory = props.Int(**props.modify("memory"))
     videoMemory = props.Int(**props.modify("vram"))
-    biosTimeInUtc = props.(**props.modify("rtcuseutc"))
+    biosTimeInUtc = props.OnOff(**props.modify("rtcuseutc"))
 
     destroy = lambda s: s._source.destroy()
     registered = props.SourceProperty(
