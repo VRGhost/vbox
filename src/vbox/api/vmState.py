@@ -16,7 +16,7 @@ def StateChangeCall(fn, targetState, timeout=10):
 
         endTime = time.time() + timeout
         rv = fn(self) # Actual functional callback
-        
+
         vm.clearCache()
         while time.time() < endTime:
             time.sleep(0.2)
@@ -26,10 +26,10 @@ def StateChangeCall(fn, targetState, timeout=10):
             if self.val == targetState:
                 break
         else:
-            # No break => timeout
-            raise exceptions.StateTransitionError("Unable to transition to the {!r} (current state: {!r}).".format(
-                targetState, self.val,
-            ))
+            if self.val != targetState:
+                raise exceptions.StateTransitionError("Unable to transition to the {!r} (current state: {!r}).".format(
+                    targetState, self.val,
+                ))
 
         return rv
 

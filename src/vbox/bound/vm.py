@@ -20,7 +20,7 @@ class VM(base.Entity):
         self.extraData = extraData.ExtraData(self.root.cli, self.id)
         self.guest = guest.Guest(self)
 
-    @base.refreshedProperty
+    @base.refreshedProperty(maxCacheAge=4)
     def info(self):
         return self.cli.manage.showVMInfo(self.id)
 
