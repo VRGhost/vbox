@@ -11,9 +11,16 @@ class HDD(base.Entity):
 
     UUID = props.Str(lambda s: s.source.info.get("UUID"))
     location = props.Str(lambda s: s.source.info.get("Location"))
-    size = props.HumanReadableFileSize(resultUnits="mbytes", fget=lambda s: s.source.info.get("Current size on disk"))
-    maxSize = props.HumanReadableFileSize(resultUnits="mbytes", fget=lambda s: s.source.info.get("Logical size"))
-    accessible = props.SourceProperty(lambda s: s.source.info.get("Accessible") == "yes")
+    size = props.HumanReadableFileSize(resultUnits="mbytes", fget=lambda s: s.source.info.getAny([
+            "Size on disk", # VirtualBox 3.4
+            "Current size on disk", # VirtualBox < 3.4
+        ]))
+    maxSize = props.HumanReadableFileSize(
+        resultUnits="mbytes", fget=lambda s: s.source.info.getAny([
+            "Capacity", # VirtualBox 3.4
+            "Logical size", # VirtualBox < 3.4
+        ]))
+    #accessible = props.SourceProperty(lambda s: s.source.info.get("Accessible") == "yes")
 
     registered = props.SourceProperty(
         fget=lambda s: s.library.isRegistered(s),

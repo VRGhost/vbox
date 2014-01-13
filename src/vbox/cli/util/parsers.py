@@ -1,6 +1,8 @@
 """Utility functions."""
 import re
 
+_NO_DEFAULT_ = object()
+
 class MappingList(object):
 
     def __init__(self):
@@ -45,6 +47,24 @@ class MappingList(object):
             return rv
         else:
             return rv[1]
+
+    def getAny(self, keys, default=_NO_DEFAULT_):
+        """Return searches values with alternative keys."""
+        found = (
+            self.get(key, _NO_DEFAULT_)
+            for key in keys
+        )
+        found = [val for val in found if val is not _NO_DEFAULT_]
+        if len(found) > 1:
+            raise KeyError("More than one value found for {}".format(keys))
+        elif not found:
+            if default is _NO_DEFAULT_:
+                raise KeyError(keys)
+            else:
+                return default
+        else:
+            assert len(found) == 1
+            return found[0]
 
     def index(self, key):
         rv = self._index.get(key)
