@@ -14,6 +14,8 @@ from . import (
     shared,
     storageController,
     usb,
+    vmAcpi,
+    vmLogs,
     vmState,
 )
 
@@ -24,7 +26,6 @@ class VM(base.Entity):
     name = props.Str(lambda s: s.source.info.get("name"))
     configFile = props.Str(lambda s: s.source.info["CfgFile"])
 
-    acpi = props.OnOff(**props.modify("acpi"))
     cpuCount = props.Int(**props.modify("cpus"))
     cpuExecutionCap = props.Int(**props.modify("cpuexecutioncap"))
     memory = props.Int(**props.modify("memory"))
@@ -41,11 +42,12 @@ class VM(base.Entity):
     changeTime = props.SourceProperty(lambda s: datetime.datetime.strptime(
         s.source.info.get("VMStateChangeTime")[:-3], "%Y-%m-%dT%H:%M:%S.%f"))
 
-    storageControllers = state = meta = storage = None
+    storageControllers = state = meta = storage = acpi = None
 
     def __init__(self, *args, **kwargs):
         super(VM, self).__init__(*args, **kwargs)
 
+        self.logs = vmLogs.Logs(self)
         self.storageControllers = storageController.Library(self)
         self.storage = storageController.DriveAccessor(self.storageControllers)
         self.state = vmState.State(self)
@@ -53,6 +55,7 @@ class VM(base.Entity):
         self.guest = guest.GuestAdditions(self)
         self.shared = shared.SharedFolderAccessor(self)
         self.usb = usb.VmUsb(self)
+        self.acpi = vmAcpi.ACPI(self)
 
     def destroy(self):
         self.registered = True
@@ -171,6 +174,21 @@ class VM(base.Entity):
     def _onSourceException(self, exc):
         if isinstance(exc, self.source.exceptions.VmNotFound):
             raise self.exceptions.VmNotFound()
+
+    def getPID(self):
+        """Return PID for the guest VM process."""
+        logFname = self.logs.latest()
+        with open(logFname, "r") as log:
+            for line in log:
+                if "Process ID:" in line:
+                    match = re.search(
+                        r"Process ID:\s*(\d+)",
+                        line
+                    )
+                    return int(match.group(1))
+            else:
+                # Not found
+                return None
 
     def groups():
         def fget(self):

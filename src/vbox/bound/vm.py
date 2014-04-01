@@ -89,6 +89,13 @@ class VM(base.Entity):
     usbAttach = refreshing(lambda s, what: s.cli.manage.controlVM.usbattach(s.id, what))
     usbDetach = refreshing(lambda s, what: s.cli.manage.controlVM.usbdetach(s.id, what))
 
+    acpiPowerButton = refreshing(
+        lambda s: s.cli.manage.controlVM.acpipowerbutton(s.id)
+    )
+    acpiSleepButton = refreshing(
+        lambda s: s.cli.manage.controlVM.acpisleepbutton(s.id)
+    )
+
     def onCliCallError(self, err):
         if isinstance(err, self.cli.exceptions.ParsedVboxError) \
         and ("NOT_FOUND" in err.errorName.upper()) \

@@ -7,15 +7,15 @@ from . import (
 )
 
 def StateChangeCall(fn, targetState, timeout=10):
-    def _wrapper(self):
+    def _wrapper(self, **kwargs):
         vm = self.source
         origState = self.val
         if origState == targetState:
-            # Already operationa;
+            # Already operational
             return
 
         endTime = time.time() + timeout
-        rv = fn(self) # Actual functional callback
+        rv = fn(self, **kwargs) # Actual functional callback
 
         vm.clearCache()
         while time.time() < endTime:

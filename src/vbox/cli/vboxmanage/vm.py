@@ -121,6 +121,14 @@ class ControlVM(base.SubCommand):
     def usbdetach(self, name, target):
         return self(name, "usbdetach", target)
 
+    def acpipowerbutton(self, name):
+        """ACPI power button press."""
+        return self(name, "acpipowerbutton")
+
+    def acpisleepbutton(self, name):
+        """ACPI sleep button press."""
+        return self(name, "acpisleepbutton")
+
 class ModifyVmFormatter(util.Formatter):
     """Modify VM has too many fields for me to bother defining them.
 
